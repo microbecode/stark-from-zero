@@ -3,6 +3,9 @@ name = "stark-from-zero"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+path = "src/mod.rs"  # Update the path to your main module file
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
