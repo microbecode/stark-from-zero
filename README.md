@@ -14,6 +14,10 @@ Implement a very simple hashing algorithm.
 
 Implement at least addition, subtraction and multiplication. Possibly division.
 
+### Execution trace as input
+
+Craft an execution trace to prove, as input for the prover.
+
 ### FRI
 
 Implement FRI logic. This requires at least:
@@ -33,7 +37,3 @@ Implement polynomial interpolation.
 ### Extension field arithmetic (optional)
 
 Possibly we can get by without an extension field, at least for the first version.
-
-### Commitment schemes (optional)
-
-Unsure if this is strictly necessary, but probably is.

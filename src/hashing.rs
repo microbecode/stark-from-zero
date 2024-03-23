@@ -1,8 +1,8 @@
-pub fn hash(input: &str) -> u32 {
-    let mut hash: u32 = 0;
+pub fn hash(input: &str) -> i64 {
+    let mut hash: i64 = 0;
     for c in input.chars() {
-        let char_num = c as u32;
-        hash = hash.wrapping_mul(100); // Shift
+        let char_num = c as i64;
+        hash = hash.wrapping_mul(1000); // Shift
         hash = hash.wrapping_add(char_num);
     }
     hash
@@ -22,5 +22,16 @@ mod tests {
         assert_ne!(hash("ab"), hash("ba"));
         assert_ne!(hash("ab "), hash("ab"));
         assert_ne!(hash(" ab"), hash("ab"));
+
+        // Test wrapping
+        assert_ne!(
+            hash("abc1 abc2 abc3 abc4 abc5 abc6 abc7 abc8 abc9"),
+            hash("abc1 abc2 abc3 abc4 abc5 abc6 abc7 abc8 abc")
+        );
+        assert_ne!(
+            hash("abc1 abc2 abc3 abc4 abc5 abc6"),
+            hash("bc1 abc2 abc3 abc4 abc5 abc6")
+        );
+        // FIXME: test fails
     }
 }
