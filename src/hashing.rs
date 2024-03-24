@@ -35,6 +35,5 @@ mod tests {
             hash("abc1 abc2 abc3 abc4 abc5 abc6"),
             hash("bc1 abc2 abc3 abc4 abc5 abc6")
         );
-        // FIXME: test fails
     }
 }
