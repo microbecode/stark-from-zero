@@ -1,5 +1,7 @@
+use crate::hashing;
+
 #[derive(Debug, Clone, Copy)]
-struct FiniteField {
+pub struct FiniteField {
     prime: u64,
 }
 
@@ -14,7 +16,7 @@ impl FiniteField {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct FiniteFieldElement {
+pub struct FiniteFieldElement {
     value: u64,
     field: FiniteField,
 }
@@ -29,31 +31,35 @@ impl FiniteFieldElement {
         }
     }
 
-    fn add(&self, other: Self) -> Self {
+    pub fn add(&self, other: Self) -> Self {
         assert_eq!(self.field.prime, other.field.prime);
         let new_value = (self.value + other.value) % self.field.prime;
         FiniteFieldElement::new(new_value, self.field)
     }
 
-    fn subtract(&self, other: Self) -> Self {
+    pub fn subtract(&self, other: Self) -> Self {
         assert_eq!(self.field.prime, other.field.prime);
         // Add prime (first) to make sure the value stays positive
         let new_value = (self.value + self.field.prime - other.value) % self.field.prime;
         FiniteFieldElement::new(new_value, self.field)
     }
 
-    fn multiply(&self, other: Self) -> Self {
+    pub fn multiply(&self, other: Self) -> Self {
         assert_eq!(self.field.prime, other.field.prime);
         let new_value = (self.value * other.value) % self.field.prime;
         FiniteFieldElement::new(new_value, self.field)
     }
 
-    fn pow(&self, exponent: u64) -> Self {
+    pub fn pow(&self, exponent: u64) -> Self {
         let mut result = FiniteFieldElement::new(1, self.field);
         for _ in 0..exponent {
             result = result.multiply(*self);
         }
         result
+    }
+
+    pub fn hash(&self) -> u64 {
+        hashing::hash(&self.value.to_string())
     }
 }
 
@@ -116,6 +122,16 @@ mod tests {
         assert_eq!(create(2, f).pow(2).value, 4);
         assert_eq!(create(2, f).pow(3).value, 3);
         assert_eq!(create(3, f).pow(2).value, 4);
+    }
+
+    #[test]
+    fn hash() {
+        let f: FiniteField = FiniteField::new(5);
+
+        assert_ne!(create(1, f).hash(), create(2, f).hash());
+        assert_ne!(create(0, f).hash(), create(4, f).hash());
+
+        assert_eq!(create(1, f).hash(), create(6, f).hash());
     }
 
     /// A silly function to shorten the test lines
