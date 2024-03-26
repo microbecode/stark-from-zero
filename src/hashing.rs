@@ -1,6 +1,6 @@
 pub fn hash(input: u64) -> u64 {
-    let mut hash: u64 = 0;
-    let mut num = input;
+    let mut hash: u64 = 3;
+    let mut num = input.wrapping_mul(100003); // biggish prime to make all inputs of at least certain size
     while num != 0 {
         let digit = num % 10;
         hash = hash.wrapping_mul(113); // Shift by a prime number so digit positions make a difference
@@ -12,7 +12,20 @@ pub fn hash(input: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
+
+    #[test]
+    fn small_are_not_identical() {
+        let mut found_hashes = HashMap::<u64, bool>::new();
+        for i in 0..10000 {
+            let hash = hash(i);
+            assert!(!found_hashes.contains_key(&hash));
+            found_hashes.insert(hash, true);
+            // println!("hash {} {}", i, hash);
+        }
+    }
 
     #[test]
     fn test_simple_hash() {
