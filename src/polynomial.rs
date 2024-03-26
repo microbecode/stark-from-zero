@@ -1,15 +1,15 @@
-struct Polynomial {
+pub struct Polynomial {
     coefficients: Vec<i64>,
 }
 
 impl Polynomial {
     /// Note that the coefficients are enumerated from the "right": the first entry is for constant value.
     /// The second entry is for coefficient * x, third entry for coefficient * x^2, etc
-    fn new(coefficients: Vec<i64>) -> Self {
+    pub fn new(coefficients: Vec<i64>) -> Self {
         Polynomial { coefficients }
     }
 
-    fn evaluate(&self, x: i64) -> i64 {
+    pub fn evaluate(&self, x: i64) -> i64 {
         let mut result = 0;
         for (i, &coeff) in self.coefficients.iter().enumerate() {
             result += coeff * x.pow(i as u32);

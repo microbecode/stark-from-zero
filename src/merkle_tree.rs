@@ -1,20 +1,20 @@
 use crate::{finite_field::FiniteFieldElement, hashing};
 
 #[derive(Debug)]
-struct MerkleTree {
+pub struct MerkleTree {
     root: Option<u64>,
     levels: Vec<Vec<u64>>,
 }
 
 impl MerkleTree {
-    fn new() -> Self {
+    pub fn new() -> Self {
         MerkleTree {
             root: None,
             levels: Vec::new(),
         }
     }
 
-    fn build(&mut self, elements: &[FiniteFieldElement]) {
+    pub fn build(&mut self, elements: &[FiniteFieldElement]) {
         let mut hashes: Vec<u64> = elements.iter().map(|e| e.hash()).collect();
         if hashes.len() % 2 != 0 {
             // If odd number, duplicate the last element
@@ -37,11 +37,11 @@ impl MerkleTree {
         self.levels = nodes;
     }
 
-    fn root(&self) -> Option<u64> {
+    pub fn root(&self) -> Option<u64> {
         self.root
     }
 
-    fn get_merkle_proof(&self, index: usize) -> Option<Vec<u64>> {
+    pub fn get_merkle_proof(&self, index: usize) -> Option<Vec<u64>> {
         if index >= self.levels[0].len() {
             return None;
         }
