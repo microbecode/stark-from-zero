@@ -1,9 +1,11 @@
-pub fn hash(input: &str) -> u64 {
+pub fn hash(input: u64) -> u64 {
     let mut hash: u64 = 0;
-    for c in input.chars() {
-        let char_num = c as u64;
-        hash = hash.wrapping_mul(113); // Shift by a prime number so char positions make a difference
-        hash = hash.wrapping_add(char_num);
+    let mut num = input;
+    while num != 0 {
+        let digit = num % 10;
+        hash = hash.wrapping_mul(113); // Shift by a prime number so digit positions make a difference
+        hash = hash.wrapping_add(digit);
+        num /= 10;
     }
     hash
 }
@@ -14,26 +16,27 @@ mod tests {
 
     #[test]
     fn test_simple_hash() {
-        assert!(hash("hello") > 0);
-        assert!(hash("world") > 0);
-        assert_eq!(hash("hello"), hash("hello"));
-        assert_ne!(hash("hello"), hash("world"));
+        assert!(hash(2) > 0);
+        assert!(hash(3) > 0);
+        assert_eq!(hash(2), hash(2));
+        assert_ne!(hash(2), hash(3));
 
-        assert_ne!(hash("hello"), hash("ehllo"));
-        assert_ne!(hash("hello"), hash("olleh"));
+        assert_ne!(hash(234), hash(324));
+        assert_ne!(hash(234), hash(432));
 
-        assert_ne!(hash("ab"), hash("ba"));
-        assert_ne!(hash("ab "), hash("ab"));
-        assert_ne!(hash(" ab"), hash("ab"));
+        assert_ne!(hash(234), hash(23));
+        assert_ne!(hash(234), hash(34));
+
+        let max_value: u64 = u64::MAX;
 
         // Test wrapping
-        assert_ne!(
-            hash("abc1 abc2 abc3 abc4 abc5 abc6 abc7 abc8 abc9"),
-            hash("abc1 abc2 abc3 abc4 abc5 abc6 abc7 abc8 abc")
-        );
-        assert_ne!(
-            hash("abc1 abc2 abc3 abc4 abc5 abc6"),
-            hash("bc1 abc2 abc3 abc4 abc5 abc6")
-        );
+        assert_ne!(hash(max_value), hash(max_value - 1));
+        assert_ne!(hash(max_value), hash(max_value / 10));
+
+        let max_value_str = max_value.to_string();
+        let without_left_most_digit = &max_value_str[1..]; // Slice to remove the first character
+        let without_left_most_digit = without_left_most_digit.parse::<u64>().unwrap();
+
+        assert_ne!(hash(max_value), hash(without_left_most_digit));
     }
 }

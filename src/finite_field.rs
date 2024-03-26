@@ -6,11 +6,11 @@ pub struct FiniteField {
 }
 
 impl FiniteField {
-    fn new(prime: u64) -> Self {
+    pub fn new(prime: u64) -> Self {
         FiniteField { prime }
     }
 
-    fn element(&self, value: u64) -> FiniteFieldElement {
+    pub fn element(&self, value: u64) -> FiniteFieldElement {
         FiniteFieldElement::new(value, *self)
     }
 }
@@ -23,7 +23,7 @@ pub struct FiniteFieldElement {
 
 /// TODO: consider what to do when u64 overflows
 impl FiniteFieldElement {
-    fn new(value: u64, field: FiniteField) -> Self {
+    pub fn new(value: u64, field: FiniteField) -> Self {
         let value_mod = value % field.prime;
         FiniteFieldElement {
             value: value_mod,
@@ -59,7 +59,7 @@ impl FiniteFieldElement {
     }
 
     pub fn hash(&self) -> u64 {
-        hashing::hash(&self.value.to_string())
+        hashing::hash(self.value)
     }
 }
 
