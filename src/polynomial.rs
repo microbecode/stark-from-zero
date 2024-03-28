@@ -66,22 +66,22 @@ impl Polynomial {
             coefficients: result_coeffs,
         }
     }
+}
 
-    /*    pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Polynomial {
-        let mut interpolated_polynomial = Polynomial::new(vec![0.0]);
+pub fn lagrange_interpolation(points: &[(f64, f64)]) -> Polynomial {
+    let mut interpolated_polynomial = Polynomial::new(vec![0.0]);
 
-        for &(xi, yi) in points {
-            let basis = points
-                .iter()
-                .filter(|&&(xj, _)| xj != xi)
-                .fold(Polynomial::new(vec![1.0]), |acc, &(xj, _)| {
-                    acc.multiply(&Polynomial::new(vec![-xj, 1.0]).div_scalar(xi - xj))
-                });
-            interpolated_polynomial = interpolated_polynomial.add(&basis).multiply_scalar(yi);
+    for &(xi, yi) in points {
+        let mut basis = Polynomial::new(vec![1.0]);
+        for &(xj, _) in points.iter().filter(|&&(x, _)| x != xi) {
+            basis = basis
+                .multiply(&Polynomial::new(vec![-xj, 1.0]))
+                .div_scalar(xi - xj);
         }
+        interpolated_polynomial = interpolated_polynomial.add(&basis.multiply_scalar(yi));
+    }
 
-        interpolated_polynomial
-    } */
+    interpolated_polynomial
 }
 
 #[cfg(test)]
@@ -279,5 +279,76 @@ mod tests {
         assert_eq!(added.coefficients[0], 4.0);
         assert_eq!(added.coefficients[1], 7.0);
         assert_eq!(added.coefficients[2], 5.0);
+    }
+
+    #[test]
+    fn lagrange_no_points() {
+        let points = vec![];
+
+        let poly = lagrange_interpolation(&points);
+
+        assert_eq!(poly.coefficients.len(), 1);
+        assert_eq!(poly.coefficients[0], 0.0);
+    }
+
+    #[test]
+    fn lagrange_one_point() {
+        let points = vec![(1.0, 2.0)];
+
+        let poly = lagrange_interpolation(&points);
+
+        // f(x) = 2
+        assert_eq!(poly.coefficients.len(), 1);
+        assert_eq!(poly.coefficients[0], 2.0);
+    }
+
+    #[test]
+    fn lagrange_two_points() {
+        let points = vec![(1.0, 2.0), (2.0, 4.0)];
+
+        let poly = lagrange_interpolation(&points);
+        // -4x + 12
+        assert_eq!(poly.coefficients.len(), 2);
+        assert_eq!(poly.coefficients[0], 0.0);
+        assert_eq!(poly.coefficients[1], 2.0);
+
+        // Same result if points are other way around
+        let points = vec![(2.0, 4.0), (1.0, 2.0)];
+
+        let poly = lagrange_interpolation(&points);
+        // -4x + 12
+        assert_eq!(poly.coefficients.len(), 2);
+        assert_eq!(poly.coefficients[0], 0.0);
+        assert_eq!(poly.coefficients[1], 2.0);
+    }
+
+    #[test]
+    fn lagrange_two_points_neg() {
+        let points = vec![(-2.5, -1.0), (-1.0, -2.0)];
+
+        let poly = lagrange_interpolation(&points);
+        // have to round the numbers due to precision issues.
+        // the exact polynomial is f(x) = -(8/6)x - (2/3)
+        assert_eq!(poly.coefficients.len(), 2);
+        assert_eq!(
+            (poly.coefficients[0] * 1_000.0) as i64,
+            (-8.0 / 3.0 * 1_000.0) as i64
+        );
+        assert_eq!(
+            (poly.coefficients[1] * 1_000.0) as i64,
+            (-2.0 / 3.0 * 1_000.0) as i64
+        );
+    }
+
+    #[test]
+    fn lagrange_three_points() {
+        let points = vec![(0.0, -2.0), (1.0, 6.0), (-5.0, 48.0)];
+
+        let poly = lagrange_interpolation(&points);
+        // f(x) = 3x^2  + 5x - 2
+        assert_eq!(poly.coefficients.len(), 3);
+        assert_eq!(poly.coefficients[0], -2.0);
+        assert_eq!(poly.coefficients[1], 5.0);
+        assert_eq!(poly.coefficients[2], 3.0);
     }
 }
