@@ -50,6 +50,28 @@ impl Polynomial {
         }
     }
 
+    /*   pub fn divide(&self, divisor: &Polynomial) -> (Polynomial, Polynomial) {
+        // Initialize quotient and remainder
+        let mut quotient = Polynomial { coefficients: vec![0]; };
+        let mut remainder = self.clone();
+
+        // Loop until degree of remainder is less than degree of divisor
+        while remainder.degree() >= divisor.degree() {
+            // Find leading terms of remainder and divisor
+            let lt_remainder = remainder.leading_term();
+            let lt_divisor = divisor.leading_term();
+
+            // Compute the next term of the quotient
+            let term = lt_remainder / lt_divisor;
+
+            // Update quotient and remainder
+            quotient = quotient.add(&term);
+            remainder = remainder.sub(&term.multiply(divisor));
+        }
+
+        (quotient, remainder)
+    }  */
+
     pub fn add(&self, other: &Polynomial) -> Polynomial {
         let mut result_coeffs =
             vec![0.0; std::cmp::max(self.coefficients.len(), other.coefficients.len())];
@@ -64,6 +86,33 @@ impl Polynomial {
 
         Polynomial {
             coefficients: result_coeffs,
+        }
+    }
+
+    pub fn sub(&self, other: &Polynomial) -> Polynomial {
+        let mut result_coeffs =
+            vec![0.0; std::cmp::max(self.coefficients.len(), other.coefficients.len())];
+
+        for i in 0..self.coefficients.len() {
+            result_coeffs[i] += self.coefficients[i];
+        }
+
+        for i in 0..other.coefficients.len() {
+            result_coeffs[i] -= other.coefficients[i]; // Subtract instead of add
+        }
+
+        Polynomial {
+            coefficients: result_coeffs,
+        }
+    }
+
+    pub fn degree(&self) -> usize {
+        self.coefficients.len() - 1
+    }
+
+    pub fn leading_term(&self) -> Polynomial {
+        Polynomial {
+            coefficients: vec![self.coefficients[self.degree()]],
         }
     }
 }
@@ -279,6 +328,65 @@ mod tests {
         assert_eq!(added.coefficients[0], 4.0);
         assert_eq!(added.coefficients[1], 7.0);
         assert_eq!(added.coefficients[2], 5.0);
+    }
+
+    #[test]
+    fn sub_empty() {
+        // f(x) = 0
+        let empty_poly = Polynomial::new([].to_vec());
+        let non_empty_poly = Polynomial::new([5.0].to_vec());
+
+        let res = empty_poly.sub(&empty_poly);
+        assert_eq!(res.coefficients.len(), 0);
+
+        let res = non_empty_poly.sub(&empty_poly);
+        assert_eq!(res.coefficients.len(), 1);
+        assert_eq!(res.coefficients[0], 5.0);
+
+        let res = empty_poly.sub(&non_empty_poly);
+        assert_eq!(res.coefficients.len(), 1);
+        assert_eq!(res.coefficients[0], -5.0);
+    }
+
+    #[test]
+    fn sub() {
+        // f(x) = 3x^2 + 0x + 4
+        let coeffs = [4_f64, 0_f64, 3_f64].to_vec();
+        let poly1 = Polynomial::new(coeffs);
+
+        // f(x) = 2x^2 + 7x + 0
+        let coeffs = [0_f64, 7_f64, 2_f64].to_vec();
+        let poly2 = Polynomial::new(coeffs);
+
+        let res = poly1.sub(&poly2);
+
+        assert_eq!(res.coefficients.len(), 3);
+        assert_eq!(res.coefficients[0], 4.0);
+        assert_eq!(res.coefficients[1], -7.0);
+        assert_eq!(res.coefficients[2], 1.0);
+    }
+
+    #[test]
+    fn degree() {
+        let coeffs = [4_f64].to_vec();
+        let poly1 = Polynomial::new(coeffs);
+        assert_eq!(poly1.degree(), 0);
+
+        let coeffs = [4_f64, 0_f64, 3_f64].to_vec();
+        let poly1 = Polynomial::new(coeffs);
+        assert_eq!(poly1.degree(), 2);
+    }
+
+    #[test]
+    fn leading_term() {
+        let coeffs = [4_f64].to_vec();
+        let poly1 = Polynomial::new(coeffs);
+        assert_eq!(poly1.leading_term().coefficients.len(), 1);
+        assert_eq!(poly1.leading_term().coefficients[0], 4.0);
+
+        let coeffs = [2_f64, 0_f64, 3_f64].to_vec();
+        let poly1 = Polynomial::new(coeffs);
+        assert_eq!(poly1.leading_term().coefficients[0], 3.0);
     }
 
     #[test]
