@@ -53,10 +53,43 @@ impl Polynomial {
         }
     }
 
+    /// https://github.com/facebook/winterfell/blob/09525751727a283dfbf5e569a09909b82380e059/math/src/polynom/mod.rs#L397
+    pub fn div(&self, divisor: &Polynomial) -> (Polynomial, Polynomial) {
+        // Ensure that the divisor is not zero
+        if divisor.coefficients.iter().all(|&c| c == 0) {
+            panic!("Division by zero");
+        }
+
+        let mut apos = self.degree();
+        let mut a = self.coefficients.to_vec();
+        let bpos = divisor.degree();
+
+        if apos < bpos {
+            panic!("Invalid division");
+        }
+
+        let mut result = Polynomial {
+            coefficients: vec![0; apos - bpos + 1],
+        };
+
+        for i in (0..result.coefficients.len()).rev() {
+            let quot = a[apos] / divisor.coefficients[bpos];
+            result.coefficients[i] = quot;
+            for j in (0..bpos).rev() {
+                a[i + j] -= divisor.coefficients[j] * quot;
+            }
+            apos = apos.wrapping_sub(1);
+        }
+        let remainder = self.sub(&result.multiply(divisor));
+
+        (result, remainder)
+    }
+
     pub fn add(&self, other: &Polynomial) -> Polynomial {
         let mut result_coeffs =
             vec![0; std::cmp::max(self.coefficients.len(), other.coefficients.len())];
 
+        // Copy original
         for i in 0..self.coefficients.len() {
             result_coeffs[i] += self.coefficients[i];
         }
@@ -74,26 +107,57 @@ impl Polynomial {
         let mut result_coeffs =
             vec![0; std::cmp::max(self.coefficients.len(), other.coefficients.len())];
 
+        // Copy the original
         for i in 0..self.coefficients.len() {
             result_coeffs[i] += self.coefficients[i];
         }
 
         for i in 0..other.coefficients.len() {
-            result_coeffs[i] -= other.coefficients[i]; // Subtract instead of add
+            result_coeffs[i] -= other.coefficients[i];
         }
 
         Polynomial {
             coefficients: result_coeffs,
         }
+        .trim()
     }
 
+    /// Returns the degree of the polynomial
     pub fn degree(&self) -> usize {
-        self.coefficients.len() - 1
+        for i in (0..self.coefficients.len()).rev() {
+            if self.coefficients[i] != 0 {
+                return i;
+            }
+        }
+        return 0;
     }
 
+    /// Returns a polynomial where all coefficients are zero except the highest term
     pub fn leading_term(&self) -> Polynomial {
+        let highest_degree_index = self.coefficients.len() - 1;
+
+        // Create a new vector to store the coefficients of the highest degree term
+        let mut highest_degree_coefficients = vec![0; highest_degree_index];
+        highest_degree_coefficients.push(self.coefficients[highest_degree_index]);
+
+        // Create a new polynomial with the highest degree term
         Polynomial {
-            coefficients: vec![self.coefficients[self.degree()]],
+            coefficients: highest_degree_coefficients,
+        }
+    }
+
+    /// Remove all zero coefficients from the start
+    pub fn trim(&self) -> Polynomial {
+        // Find the index of the last non-zero coefficient from the end
+        let end_index = self
+            .coefficients
+            .iter()
+            .rposition(|&c| c != 0)
+            .map_or(0, |i| i + 1);
+
+        // Create a new polynomial with trimmed coefficients
+        Polynomial {
+            coefficients: self.coefficients[..end_index].to_vec(),
         }
     }
 }
@@ -408,12 +472,13 @@ mod tests {
     fn leading_term() {
         let coeffs = [4_i128].to_vec();
         let poly1 = Polynomial::new(coeffs);
-        assert_eq!(poly1.leading_term().coefficients.len(), 1);
+        //  assert_eq!(poly1.leading_term().coefficients.len(), 1);
         assert_eq!(poly1.leading_term().coefficients[0], 4);
 
         let coeffs = [2_i128, 0_i128, 3_i128].to_vec();
         let poly1 = Polynomial::new(coeffs);
-        assert_eq!(poly1.leading_term().coefficients[0], 3);
+        assert_eq!(poly1.leading_term().coefficients[0], 0);
+        assert_eq!(poly1.leading_term().coefficients[2], 3);
     }
 
     #[test]
@@ -482,45 +547,31 @@ mod tests {
         assert_eq!(poly.coefficients[2], 1);
     }
 
-    pub fn div(a: &Polynomial, divisor: &Polynomial) -> (Polynomial, Polynomial) {
-        // Ensure that the divisor is not zero
-        if divisor.coefficients.iter().all(|&c| c == 0) {
-            panic!("Division by zero");
-        }
+    #[test]
+    fn trim() {
+        let coeffs = vec![0_i128, 2, 4];
+        let mut poly = Polynomial::new(coeffs.clone());
+        poly = poly.trim();
+        assert_vectors_equal(&poly.coefficients, &coeffs);
 
-        // Initialize quotient and remainder
-
-        let mut quotient = Polynomial {
-            coefficients: vec![0],
-        };
-        let mut remainder = a.clone();
-
-        let mut i = 0;
-
-        // Iterate until the degree of the remainder is less than the degree of the divisor
-        while remainder.coefficients.len() > 0
-            && remainder.coefficients[0] > 0
-            && remainder.degree() > divisor.degree()
-        {
-            i += 1;
-            if i > 5 {
-                println!("Halted");
-                break;
-            }
-            let t: i128 =
-                remainder.leading_term().coefficients[0] / divisor.leading_term().coefficients[0];
-
-            let cos = vec![t];
-            let t_poly: Polynomial = Polynomial { coefficients: cos };
-
-            quotient = quotient.add(&t_poly);
-            remainder = remainder.sub(&t_poly).multiply(divisor);
-        }
-
-        (quotient, remainder)
+        let coeffs = vec![0_i128, 2, 0, 4, 0];
+        let should_result = vec![0_i128, 2, 0, 4];
+        let mut poly = Polynomial::new(coeffs.clone());
+        poly = poly.trim();
+        assert_vectors_equal(&poly.coefficients, &should_result);
     }
 
-    /*   #[test]
+    fn assert_vectors_equal(a: &[i128], b: &[i128]) {
+        assert_eq!(a.len(), b.len()); // Ensure vectors have the same length
+
+        // Compare each element of the vectors
+        for (x, y) in a.iter().zip(b.iter()) {
+            assert_eq!(x, y);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid division")]
     fn div_empty() {
         // f(x) = 3x^2 + 0x + 4
         let coeffs = [4_i128, 0_i128, 3_i128].to_vec();
@@ -529,17 +580,11 @@ mod tests {
         let coeffs = [0_i128].to_vec();
         let empty = Polynomial::new(coeffs);
 
-        let (q, r) = empty.div(&non_empty);
-        assert_eq!(q.degree(), 0);
-        assert_eq!(q.coefficients[0], 0.0);
-        assert_eq!(r.degree(), 0);
-        assert_eq!(r.coefficients[0], 0.0);
+        empty.div(&non_empty);
     }
 
-    */
-
     #[test]
-    fn div_simple() {
+    fn div_no_remainder() {
         // f(x) = 4x^2 + 2x
         let coeffs = [0_i128, 2_i128, 4_i128].to_vec();
         let poly1 = Polynomial::new(coeffs);
@@ -548,16 +593,80 @@ mod tests {
         let coeffs = [0_i128, 1_i128].to_vec();
         let poly2 = Polynomial::new(coeffs);
 
-        let (q, r) = div(&poly1, &poly2);
-
-        println!("PPOLY {}, {}", q, r);
+        let (q, r) = poly1.div(&poly2);
 
         // 4x + 2
-        /*         assert_eq!(q.coefficients.len(), 2);
-        assert_eq!(q.coefficients[0], 2.0);
-        assert_eq!(q.coefficients[1], 4.0);
+        assert_eq!(q.coefficients.len(), 2);
+        assert_eq!(q.coefficients[0], 2);
+        assert_eq!(q.coefficients[1], 4);
+
+        assert_eq!(r.coefficients.len(), 0);
+    }
+
+    #[test]
+    fn div_no_remainder2() {
+        // f(x) = x^3 + x^2 + 2 * x + 2
+        let coeffs = [2_i128, 2, 1, 1].to_vec();
+        let poly1 = Polynomial::new(coeffs);
+
+        // x^2 + 2
+        let coeffs = [2_i128, 0, 1].to_vec();
+        let poly2 = Polynomial::new(coeffs);
+
+        let (q, r) = poly1.div(&poly2);
+
+        // x + 1
+        assert_eq!(q.coefficients.len(), 2);
+        assert_eq!(q.coefficients[0], 1);
+        assert_eq!(q.coefficients[1], 1);
+
+        assert_eq!(r.coefficients.len(), 0);
+    }
+
+    #[test]
+    fn div_remainder() {
+        // f(x) = x^3 - 2x^2 - 4
+        let coeffs = [-4_i128, 0, -2, 1].to_vec();
+        let poly1 = Polynomial::new(coeffs);
+
+        // x - 3
+        let coeffs = [-3_i128, 1].to_vec();
+        let poly2 = Polynomial::new(coeffs);
+
+        let (q, r) = poly1.div(&poly2);
+
+        // x^2 + x + 3 , remainder: 5
+        println!("RESULT {} , {}", q, r);
+        assert_eq!(q.coefficients.len(), 3);
+        assert_eq!(q.coefficients[0], 3);
+        assert_eq!(q.coefficients[1], 1);
+        assert_eq!(q.coefficients[2], 1);
 
         assert_eq!(r.coefficients.len(), 1);
-        assert_eq!(r.coefficients[0], 0.0); */
+        assert_eq!(r.coefficients[0], 5);
+    }
+
+    #[test]
+    fn div_remainder2() {
+        // f(x) = 6x^4 + 5x^3 + 4x - 4
+        let coeffs = [-4_i128, 4, 0, 5, 6].to_vec();
+        let poly1 = Polynomial::new(coeffs);
+
+        // 2x^2 + x - 1
+        let coeffs = [-1_i128, 1, 2].to_vec();
+        let poly2 = Polynomial::new(coeffs);
+
+        let (q, r) = poly1.div(&poly2);
+
+        // 3x^2 + x + 1 , remainder: 4x - 3
+        println!("RESULT {} , {}", q, r);
+        assert_eq!(q.coefficients.len(), 3);
+        assert_eq!(q.coefficients[0], 1);
+        assert_eq!(q.coefficients[1], 1);
+        assert_eq!(q.coefficients[2], 3);
+
+        assert_eq!(r.coefficients.len(), 2);
+        assert_eq!(r.coefficients[0], -3);
+        assert_eq!(r.coefficients[1], 4);
     }
 }
