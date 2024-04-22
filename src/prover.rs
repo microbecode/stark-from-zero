@@ -1,4 +1,4 @@
-use crate::polynomial::{lagrange_interpolation, Polynomial};
+use crate::polynomial::polynomial::Polynomial;
 use crate::trace::Trace;
 
 pub fn prove(trace: Trace) {
