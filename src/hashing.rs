@@ -1,5 +1,5 @@
-pub fn hash(input: u64) -> u64 {
-    let mut hash: u64 = 3;
+pub fn hash(input: i128) -> i128 {
+    let mut hash: i128 = 3;
     let mut num = input.wrapping_mul(100003); // biggish prime to make all inputs of at least certain size
     while num != 0 {
         let digit = num % 10;
@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn small_are_not_identical() {
-        let mut found_hashes = HashMap::<u64, bool>::new();
+        let mut found_hashes = HashMap::<i128, bool>::new();
         for i in 0..10000 {
             let hash = hash(i);
             assert!(!found_hashes.contains_key(&hash));
@@ -40,7 +40,7 @@ mod tests {
         assert_ne!(hash(234), hash(23));
         assert_ne!(hash(234), hash(34));
 
-        let max_value: u64 = u64::MAX;
+        let max_value: i128 = i128::MAX;
 
         // Test wrapping
         assert_ne!(hash(max_value), hash(max_value - 1));
@@ -48,7 +48,7 @@ mod tests {
 
         let max_value_str = max_value.to_string();
         let without_left_most_digit = &max_value_str[1..]; // Slice to remove the first character
-        let without_left_most_digit = without_left_most_digit.parse::<u64>().unwrap();
+        let without_left_most_digit = without_left_most_digit.parse::<i128>().unwrap();
 
         assert_ne!(hash(max_value), hash(without_left_most_digit));
     }

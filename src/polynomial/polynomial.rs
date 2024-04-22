@@ -1,3 +1,4 @@
+use crate::finite_field::FiniteFieldElement;
 use core::fmt;
 
 #[derive(Debug, Clone)]
@@ -15,7 +16,7 @@ impl Polynomial {
     /// Returns the degree of the polynomial
     pub fn degree(&self) -> usize {
         for i in (0..self.coefficients.len()).rev() {
-            if self.coefficients[i] != 0 {
+            if self.coefficients[i] != self::FiniteFieldElement::ZERO.value {
                 return i;
             }
         }
@@ -27,7 +28,7 @@ impl Polynomial {
         let highest_degree_index = self.coefficients.len() - 1;
 
         // Create a new vector to store the coefficients of the highest degree term
-        let mut highest_degree_coefficients = vec![0; highest_degree_index];
+        let mut highest_degree_coefficients = vec![0_i128; highest_degree_index];
         highest_degree_coefficients.push(self.coefficients[highest_degree_index]);
 
         // Create a new polynomial with the highest degree term
@@ -87,7 +88,7 @@ mod tests {
         let poly1 = Polynomial::new(coeffs);
         assert_eq!(poly1.degree(), 0);
 
-        let coeffs = [4_i128, 0_i128, 3_i128].to_vec();
+        let coeffs = [4_i128, 0, 3].to_vec();
         let poly1 = Polynomial::new(coeffs);
         assert_eq!(poly1.degree(), 2);
     }
@@ -99,7 +100,7 @@ mod tests {
         //  assert_eq!(poly1.leading_term().coefficients.len(), 1);
         assert_eq!(poly1.leading_term().coefficients[0], 4);
 
-        let coeffs = [2_i128, 0_i128, 3_i128].to_vec();
+        let coeffs = [2_i128, 0, 3].to_vec();
         let poly1 = Polynomial::new(coeffs);
         assert_eq!(poly1.leading_term().coefficients[0], 0);
         assert_eq!(poly1.leading_term().coefficients[2], 3);

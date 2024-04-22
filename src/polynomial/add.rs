@@ -45,11 +45,11 @@ mod tests {
     #[test]
     fn add() {
         // f(x) = 3x^2 + 0x + 4
-        let coeffs = [4_i128, 0_i128, 3_i128].to_vec();
+        let coeffs = [4_i128, 0, 3].to_vec();
         let poly1 = Polynomial::new(coeffs);
 
         // f(x) = 2x^2 + 7x + 0
-        let coeffs = [0_i128, 7_i128, 2_i128].to_vec();
+        let coeffs = [0_i128, 7, 2].to_vec();
         let poly2 = Polynomial::new(coeffs);
 
         let added = poly1.add(&poly2);

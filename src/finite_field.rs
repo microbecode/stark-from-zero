@@ -2,28 +2,47 @@ use crate::hashing;
 
 #[derive(Debug, Clone, Copy)]
 pub struct FiniteField {
-    prime: u64,
+    prime: i128,
 }
 
 impl FiniteField {
-    pub fn new(prime: u64) -> Self {
+    pub fn new(prime: i128) -> Self {
         FiniteField { prime }
     }
 
-    pub fn element(&self, value: u64) -> FiniteFieldElement {
-        FiniteFieldElement::new(value, *self)
+    pub fn element(&self, value: i128) -> FiniteFieldElement {
+        FiniteFieldElement::new_fielded(value, *self)
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct FiniteFieldElement {
-    value: u64,
-    field: FiniteField,
+    pub value: i128,
+    pub field: FiniteField,
 }
 
 /// TODO: consider what to do when u64 overflows
 impl FiniteFieldElement {
-    pub fn new(value: u64, field: FiniteField) -> Self {
+    const DEFAULT_FIELD_SIZE: i128 = 9;
+    const DEFAULT_FIELD: FiniteField = FiniteField {
+        prime: Self::DEFAULT_FIELD_SIZE,
+    };
+
+    const MAX: i128 = i128::MAX;
+    pub const ZERO: Self = FiniteFieldElement {
+        value: 0,
+        field: Self::DEFAULT_FIELD,
+    };
+
+    pub fn new(value: i128) -> Self {
+        let value_mod = value % Self::DEFAULT_FIELD.prime;
+        FiniteFieldElement {
+            value: value_mod,
+            field: Self::DEFAULT_FIELD,
+        }
+    }
+
+    pub fn new_fielded(value: i128, field: FiniteField) -> Self {
         let value_mod = value % field.prime;
         FiniteFieldElement {
             value: value_mod,
@@ -32,33 +51,31 @@ impl FiniteFieldElement {
     }
 
     pub fn add(&self, other: Self) -> Self {
-        assert_eq!(self.field.prime, other.field.prime);
         let new_value = (self.value + other.value) % self.field.prime;
-        FiniteFieldElement::new(new_value, self.field)
+        FiniteFieldElement::new(new_value)
     }
 
     pub fn subtract(&self, other: Self) -> Self {
-        assert_eq!(self.field.prime, other.field.prime);
         // Add prime (first) to make sure the value stays positive
         let new_value = (self.value + self.field.prime - other.value) % self.field.prime;
-        FiniteFieldElement::new(new_value, self.field)
+        FiniteFieldElement::new(new_value)
     }
 
     pub fn multiply(&self, other: Self) -> Self {
         assert_eq!(self.field.prime, other.field.prime);
         let new_value = (self.value * other.value) % self.field.prime;
-        FiniteFieldElement::new(new_value, self.field)
+        FiniteFieldElement::new_fielded(new_value, self.field)
     }
 
     pub fn pow(&self, exponent: u64) -> Self {
-        let mut result = FiniteFieldElement::new(1, self.field);
+        let mut result = FiniteFieldElement::new_fielded(1, self.field);
         for _ in 0..exponent {
             result = result.multiply(*self);
         }
         result
     }
 
-    pub fn hash(&self) -> u64 {
+    pub fn hash(&self) -> i128 {
         hashing::hash(self.value)
     }
 }
@@ -70,7 +87,7 @@ mod tests {
     #[test]
     fn new() {
         let field: FiniteField = FiniteField::new(5);
-        let elem: FiniteFieldElement = FiniteFieldElement::new(4, field);
+        let elem: FiniteFieldElement = FiniteFieldElement::new_fielded(4, field);
 
         assert_eq!(elem.value, 4);
         assert_eq!(elem.field.prime, 5);
@@ -135,7 +152,7 @@ mod tests {
     }
 
     /// A silly function to shorten the test lines
-    fn create(val: u64, field: FiniteField) -> FiniteFieldElement {
-        FiniteFieldElement::new(val, field)
+    fn create(val: i128, field: FiniteField) -> FiniteFieldElement {
+        FiniteFieldElement::new_fielded(val, field)
     }
 }
