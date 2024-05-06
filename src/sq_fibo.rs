@@ -1,4 +1,5 @@
-// This file is used for evaluating square fibonacci sequence, used in Stark 101 examples
+// This file is used for evaluating square fibonacci sequence, used in Stark 101 examples.
+// All unit test values are from the videos https://starkware.co/stark-101/
 
 use crate::number::modulo_multiply;
 
@@ -43,5 +44,12 @@ mod tests {
         let mut results = vec![];
         evaluate_sq_fibo(1, 3, 7, &mut results, 0, 6);
         assert_eq!(results, vec![1, 3, 3, 4, 4, 4]);
+    }
+
+    #[test]
+    fn sq_fibo_full() {
+        let mut results = vec![];
+        evaluate_sq_fibo(1, 3141592, 3221225473, &mut results, 0, 1024);
+        assert_eq!(results[1022], 2338775057);
     }
 }

@@ -1,61 +1,32 @@
 use crate::polynomial::polynomial::Polynomial;
 use crate::trace::Trace;
 
-pub fn prove(trace: Trace) {
-    //let mut polys: Vec<Polynomial> = vec![];
-    /*  let mut curr_poly: Polynomial = Polynomial::new(vec![0.0]);
-    for row in trace.trace.iter() {
-        let input_1 = row[0] as f64;
-        let input_2 = row[1] as f64;
-        let poly = lagrange_interpolation(&[(input_1, input_2)]);
-        curr_poly = curr_poly.add(&poly);
-    } */
-}
+pub fn prove(trace: Trace) {}
 
 #[cfg(test)]
 mod tests {
-    use crate::trace::Trace;
+    use crate::{sq_fibo::evaluate_sq_fibo, trace::Trace};
 
     use super::prove;
 
-    fn something() {
-        // (x1 + x2)(x2 + w1) with inputs x1 = 5, x2= 6, w1 = 1
+    #[test]
+    fn prover_test() {
+        // Using trace from https://starkware.co/stark-101/
+
         /*
+                Field: 3221225473
+                Generator: 5
 
-        Trace with input row:
-        [5,6,1]
-        [5,6,11]
-        [6,1,7]
-        [11,7,77]
+                LDE:
+        1. Create trace
+        2. TODO
 
-        Trace:
-        [5,6,11]
-        [6,1,7]
-        [11,7,77]
+                 */
 
-        in1 = 5
-        in2 = 6
-        in3 = 1
-        out = 77
+        let mut results = vec![];
+        evaluate_sq_fibo(1, 3141592, 3221225473, &mut results, 0, 1024);
 
-        constraints row-by-row:
-        - in1 + in2 = temp1
-        - in2 + in3 = temp2
-        - temp1 * temp2 = out
-
-
-        all constraints together: (in1 + in2) * (in2 + in3) = out
-
-        Replaced names with polynomial indexing:
-        - p1(x) + p2(x) = p3(x)
-        - p1(x + 1) + p2(x + 1) = p3(x + 1)
-        - p3(x) * p3(x + 1) = p3(x + 2)
-
-
-
-
-        */
-        let trace = Trace::new(vec![vec![5, 6, 11], vec![6, 1, 7], vec![11, 7, 77]]);
+        let trace = Trace::new(vec![results]);
         prove(trace);
     }
 }

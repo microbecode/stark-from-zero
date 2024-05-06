@@ -28,7 +28,6 @@ impl FiniteFieldElement {
         prime: Self::DEFAULT_FIELD_SIZE,
     };
 
-    const MAX: i128 = i128::MAX;
     pub const ZERO: Self = FiniteFieldElement {
         value: 0,
         field: Self::DEFAULT_FIELD,
