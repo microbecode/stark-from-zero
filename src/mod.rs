@@ -4,4 +4,5 @@ pub mod merkle_tree;
 pub mod number;
 pub mod polynomial;
 pub mod prover;
+pub mod sq_fibo;
 pub mod trace;
