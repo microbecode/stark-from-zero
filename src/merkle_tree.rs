@@ -2,8 +2,8 @@ use crate::{finite_field::FiniteFieldElement, hashing};
 
 #[derive(Debug)]
 pub struct MerkleTree {
-    root: Option<u64>,
-    levels: Vec<Vec<u64>>,
+    root: Option<i128>,
+    levels: Vec<Vec<i128>>,
 }
 
 impl MerkleTree {
@@ -15,7 +15,7 @@ impl MerkleTree {
     }
 
     pub fn build(&mut self, elements: &[FiniteFieldElement]) {
-        let mut hashes: Vec<u64> = elements.iter().map(|e| e.hash()).collect();
+        let mut hashes: Vec<i128> = elements.iter().map(|e| e.hash()).collect();
         if hashes.len() % 2 != 0 {
             // If odd number, duplicate the last element
             hashes.push(hashes[hashes.len() - 1]);
@@ -37,11 +37,11 @@ impl MerkleTree {
         self.levels = nodes;
     }
 
-    pub fn root(&self) -> Option<u64> {
+    pub fn root(&self) -> Option<i128> {
         self.root
     }
 
-    pub fn get_merkle_proof(&self, index: usize) -> Option<Vec<u64>> {
+    pub fn get_merkle_proof(&self, index: usize) -> Option<Vec<i128>> {
         if index >= self.levels[0].len() {
             return None;
         }
@@ -88,12 +88,11 @@ mod tests {
     #[test]
     fn build_tree_one_element() {
         let mut tree = MerkleTree::new();
-        let field = FiniteField::new(13);
 
-        let val: u64 = 3;
+        let val: i128 = 3;
         let mut elements: Vec<FiniteFieldElement> = Vec::new();
 
-        elements.push(FiniteFieldElement::new(val, field));
+        elements.push(FiniteFieldElement::new(val));
         tree.build(&elements);
 
         let expected_leaf = hash(val);
@@ -110,14 +109,13 @@ mod tests {
     #[test]
     fn build_tree_two_elements() {
         let mut tree = MerkleTree::new();
-        let field = FiniteField::new(13);
 
-        let val1: u64 = 3;
-        let val2: u64 = 4;
+        let val1: i128 = 3;
+        let val2: i128 = 4;
         let mut elements: Vec<FiniteFieldElement> = Vec::new();
 
-        elements.push(FiniteFieldElement::new(val1, field));
-        elements.push(FiniteFieldElement::new(val2, field));
+        elements.push(FiniteFieldElement::new(val1));
+        elements.push(FiniteFieldElement::new(val2));
         tree.build(&elements);
 
         let expected_leaf_1 = hash(val1);
@@ -136,16 +134,15 @@ mod tests {
     #[test]
     fn build_tree_three_elements() {
         let mut tree = MerkleTree::new();
-        let field = FiniteField::new(13);
 
-        let val1: u64 = 3;
-        let val2: u64 = 4;
-        let val3: u64 = 5;
+        let val1: i128 = 3;
+        let val2: i128 = 4;
+        let val3: i128 = 5;
         let mut elements: Vec<FiniteFieldElement> = Vec::new();
 
-        elements.push(FiniteFieldElement::new(val1, field));
-        elements.push(FiniteFieldElement::new(val2, field));
-        elements.push(FiniteFieldElement::new(val3, field));
+        elements.push(FiniteFieldElement::new(val1));
+        elements.push(FiniteFieldElement::new(val2));
+        elements.push(FiniteFieldElement::new(val3));
         tree.build(&elements);
 
         let expected_leaf_1 = hash(val1);
@@ -178,16 +175,15 @@ mod tests {
     #[test]
     fn get_merkle_proof_with_three_elements() {
         let mut tree = MerkleTree::new();
-        let field = FiniteField::new(13);
 
-        let val1: u64 = 3;
-        let val2: u64 = 4;
-        let val3: u64 = 5;
+        let val1: i128 = 3;
+        let val2: i128 = 4;
+        let val3: i128 = 5;
         let mut elements: Vec<FiniteFieldElement> = Vec::new();
 
-        elements.push(FiniteFieldElement::new(val1, field));
-        elements.push(FiniteFieldElement::new(val2, field));
-        elements.push(FiniteFieldElement::new(val3, field));
+        elements.push(FiniteFieldElement::new(val1));
+        elements.push(FiniteFieldElement::new(val2));
+        elements.push(FiniteFieldElement::new(val3));
         tree.build(&elements);
 
         let expected_leaf_1 = hash(val1);
