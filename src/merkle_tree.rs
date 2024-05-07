@@ -28,9 +28,9 @@ impl MerkleTree {
             for chunk in hashes.chunks(2) {
                 let hash = hashing::hash(chunk[0].wrapping_add(chunk[1]));
 
-                new_hashes.push(hash); // ab cd ef
+                new_hashes.push(hash);
             }
-            nodes.push(new_hashes.clone()); // [ab cd ef]
+            nodes.push(new_hashes.clone());
             hashes = new_hashes;
         }
         self.root = hashes.pop();

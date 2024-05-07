@@ -1,23 +1,33 @@
 use crate::finite_field::{FiniteField, FiniteFieldElement};
+use crate::merkle_tree::MerkleTree;
 use crate::number::modulo_multiply;
 use crate::polynomial::interpolate::lagrange_interpolation;
 use crate::polynomial::polynomial::Polynomial;
 use crate::trace::Trace;
 
 pub fn prove(trace: Trace, field: FiniteField, generator: i128) {
+    let g = FiniteFieldElement::new_fielded(generator, field);
     // LDE
     let poly = get_poly(trace, generator, field);
+    let eval_domain = get_eval_domain(g);
 
-    let eval_domain = get_eval_domain(generator);
+    let mut evaluations: Vec<FiniteFieldElement> = vec![];
+    for i in eval_domain.iter() {
+        evaluations.push(poly.evaluate(*i));
+    }
+    let mut tree = MerkleTree::new();
+    tree.build(&evaluations);
+    println!("ROOT: {}", tree.root().unwrap());
+    // LDE Commitment "done"
 }
 
-fn get_eval_domain(generator: i128) -> Vec<FiniteFieldElement> {
-    let w = FiniteFieldElement::new(generator);
+fn get_eval_domain(generator: FiniteFieldElement) -> Vec<FiniteFieldElement> {
     // Adjusted from https://github.com/lambdaclass/STARK101-rs/blob/main/part1.ipynb
     let exp = (2_i128.pow(30) * 3) / 8192;
-    let h = w.pow(exp);
+    let h = generator.pow(exp);
     let H: Vec<FiniteFieldElement> = (0..8192).into_iter().map(|i| h.pow(i)).collect();
-    let eval_domain: Vec<FiniteFieldElement> = H.into_iter().map(|x| w.multiply(x)).collect();
+    let eval_domain: Vec<FiniteFieldElement> =
+        H.into_iter().map(|x| generator.multiply(x)).collect();
     eval_domain
 }
 

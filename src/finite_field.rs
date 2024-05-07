@@ -21,7 +21,7 @@ pub struct FiniteFieldElement {
     pub field: FiniteField,
 }
 
-/// TODO: consider what to do when u64 overflows
+/// TODO: consider what to do when i128 overflows
 impl FiniteFieldElement {
     const DEFAULT_FIELD_SIZE: i128 = 9;
     const DEFAULT_FIELD: FiniteField = FiniteField {
@@ -51,13 +51,13 @@ impl FiniteFieldElement {
 
     pub fn add(&self, other: Self) -> Self {
         let new_value = (self.value + other.value) % self.field.prime;
-        FiniteFieldElement::new(new_value)
+        FiniteFieldElement::new_fielded(new_value, self.field)
     }
 
     pub fn subtract(&self, other: Self) -> Self {
         // Add prime (first) to make sure the value stays positive
         let new_value = (self.value + self.field.prime - other.value) % self.field.prime;
-        FiniteFieldElement::new(new_value)
+        FiniteFieldElement::new_fielded(new_value, self.field)
     }
 
     pub fn multiply(&self, other: Self) -> Self {

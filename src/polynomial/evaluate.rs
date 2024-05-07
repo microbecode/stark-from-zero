@@ -1,10 +1,15 @@
+use crate::finite_field::FiniteFieldElement;
+
 use super::polynomial::Polynomial;
 
 impl Polynomial {
-    pub fn evaluate(&self, x: i128) -> i128 {
-        let mut result = 0_i128;
+    pub fn evaluate(&self, x: FiniteFieldElement) -> FiniteFieldElement {
+        let mut result = FiniteFieldElement::new_fielded(0, x.field);
         for (i, &coeff) in self.coefficients.iter().enumerate() {
-            result += coeff * x.pow(i as u32);
+            let co_elem = FiniteFieldElement::new_fielded(coeff, x.field);
+            let pow = x.pow(i as i128);
+            let multi = pow.multiply(co_elem);
+            result = result.add(multi);
         }
         result
     }
@@ -12,6 +17,8 @@ impl Polynomial {
 
 #[cfg(test)]
 mod tests {
+    use crate::finite_field::FiniteField;
+
     use super::*;
 
     #[test]
@@ -85,8 +92,16 @@ mod tests {
         // 48 - 8 + 4
     }
 
+    #[test]
+    fn evaluation_overflow() {
+        let pol: Polynomial = Polynomial::new([0_i128, 0, 1].to_vec());
+        let elem = FiniteFieldElement::new_fielded(4, FiniteField::new(10));
+        assert_eq!(pol.evaluate(elem).value, 6);
+    }
+
     fn test_polynomial_eval(coeffs: Vec<i128>, value: i128, expected_result: i128) {
         let pol: Polynomial = Polynomial::new(coeffs);
-        assert_eq!(pol.evaluate(value), expected_result);
+        let elem = FiniteFieldElement::new_fielded(value, FiniteField::new(i128::MAX));
+        assert_eq!(pol.evaluate(elem).value, expected_result);
     }
 }
