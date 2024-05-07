@@ -1,36 +1,31 @@
 use super::polynomial::Polynomial;
 
+/// Adjusted from https://en.wikibooks.org/wiki/Algorithm_Implementation/Mathematics/Polynomial_interpolation
 pub fn lagrange_interpolation(points: &[(i128, i128)]) -> Polynomial {
     let numpts = points.len();
-    let mut theterm = vec![];
-    let mut thepoly = vec![];
 
-    for _ in 0..numpts {
-        thepoly.push(0.0);
-        theterm.push(0.0);
-    }
+    let mut thepoly = vec![0.0; numpts];
+    let mut theterm = vec![0.0; numpts];
+
     for i in 0..numpts {
         let mut prod = 1.0;
         for j in 0..numpts {
             theterm[j] = 0.0;
         }
         for j in 0..numpts {
-            if i == j {
-                continue;
+            if i != j {
+                prod *= (points[i].0 - points[j].0) as f64;
             }
-            prod *= points[i].0 as f64 - points[j].0 as f64;
         }
 
-        prod = points[i].1 as f64 / prod;
-        theterm[0] = prod;
+        theterm[0] = points[i].1 as f64 / prod;
 
         for j in 0..numpts {
-            if i == j {
-                continue;
-            }
-            for k in (1..numpts).rev() {
-                theterm[k] += theterm[k - 1];
-                theterm[k - 1] *= -points[j].0 as f64;
+            if i != j {
+                for k in (1..numpts).rev() {
+                    theterm[k] += theterm[k - 1];
+                    theterm[k - 1] *= -points[j].0 as f64;
+                }
             }
         }
 
@@ -41,8 +36,8 @@ pub fn lagrange_interpolation(points: &[(i128, i128)]) -> Polynomial {
 
     // Mutate to integers
     let mut result = Polynomial::new(vec![]);
-    for i in 0..thepoly.len() {
-        result.coefficients.push(thepoly[i] as i128);
+    for i in thepoly {
+        result.coefficients.push(i as i128);
     }
     result
 }
