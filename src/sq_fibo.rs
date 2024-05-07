@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn sq_fibo_full() {
         let mut results = vec![];
-        evaluate_sq_fibo(1, 3141592, 3221225473, &mut results, 0, 1024);
+        evaluate_sq_fibo(1, 3141592, 3221225473, &mut results, 0, 1023);
         assert_eq!(results[1022], 2338775057);
     }
 }

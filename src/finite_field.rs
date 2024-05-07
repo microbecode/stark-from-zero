@@ -2,7 +2,7 @@ use crate::hashing;
 
 #[derive(Debug, Clone, Copy)]
 pub struct FiniteField {
-    prime: i128,
+    pub prime: i128,
 }
 
 impl FiniteField {
@@ -66,7 +66,7 @@ impl FiniteFieldElement {
         FiniteFieldElement::new_fielded(new_value, self.field)
     }
 
-    pub fn pow(&self, exponent: u64) -> Self {
+    pub fn pow(&self, exponent: i128) -> Self {
         let mut result = FiniteFieldElement::new_fielded(1, self.field);
         for _ in 0..exponent {
             result = result.multiply(*self);
