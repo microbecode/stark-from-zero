@@ -2,13 +2,19 @@ use crate::finite_field::{FiniteField, FiniteFieldElement};
 use crate::merkle_tree::MerkleTree;
 use crate::number::modulo_multiply;
 use crate::polynomial::interpolate::lagrange_interpolation;
-use crate::polynomial::polynomial::Polynomial;
+use crate::polynomial::polynomial::{Polynomial, RationalPolynomial};
 use crate::trace::Trace;
 
-pub fn prove(trace: Trace, field: FiniteField, generator: i128) {
+/// Pretend these are sent to the verifier at intervals
+pub struct Commitments {
+    lde_commitment: FiniteFieldElement,
+}
+
+pub fn prove(trace: Trace, field: FiniteField, generator: i128) -> Commitments {
     let g = FiniteFieldElement::new_fielded(generator, field);
+
     // LDE
-    let poly = get_poly(trace, generator, field);
+    let poly = get_poly(&trace, generator, field);
     let eval_domain = get_eval_domain(g);
 
     let mut evaluations: Vec<FiniteFieldElement> = vec![];
@@ -17,8 +23,34 @@ pub fn prove(trace: Trace, field: FiniteField, generator: i128) {
     }
     let mut tree = MerkleTree::new();
     tree.build(&evaluations);
-    println!("ROOT: {}", tree.root().unwrap());
     // LDE Commitment "done"
+
+    // Constraints
+    let main_function: Polynomial = Polynomial::new(trace.trace[0].clone());
+    let poly_one = Polynomial::new([1].to_vec());
+    let poly_x = Polynomial::new([0, 1].to_vec());
+
+    let mut poly_1022_coeffs = vec![0; 1022];
+    poly_1022_coeffs.push(1);
+
+    let poly_1022 = Polynomial::new(poly_1022_coeffs);
+    //fn p0(x: FiniteFieldElement) {
+    let poly_first = RationalPolynomial::new(
+        main_function.clone().sub(&poly_one),
+        poly_x.clone().sub(&poly_one),
+    );
+    let poly_second = RationalPolynomial::new(
+        main_function
+            .clone()
+            .sub(&Polynomial::new([2338775057].to_vec())),
+        poly_x.clone().sub(&poly_1022),
+    );
+
+    //}
+
+    Commitments {
+        lde_commitment: FiniteFieldElement::new_fielded(tree.root().unwrap(), field),
+    }
 }
 
 fn get_eval_domain(generator: FiniteFieldElement) -> Vec<FiniteFieldElement> {
@@ -31,7 +63,7 @@ fn get_eval_domain(generator: FiniteFieldElement) -> Vec<FiniteFieldElement> {
     eval_domain
 }
 
-fn get_poly(trace: Trace, generator: i128, field: FiniteField) -> Polynomial {
+fn get_poly(trace: &Trace, generator: i128, field: FiniteField) -> Polynomial {
     let mut inputs: Vec<(i128, i128)> = vec![];
     let mut previous_input_g = 1;
     for i in 0..trace.trace[0].len() {
@@ -57,14 +89,9 @@ mod tests {
         // Using trace from https://starkware.co/stark-101/
 
         /*
-                Field: 3221225473
-                Generator: 5
-
-                LDE:
-        1. Create trace
-        2. TODO
-
-                 */
+        Field: 3221225473
+        Generator: 5
+         */
 
         let mut results = vec![];
         evaluate_sq_fibo(1, 3141592, 3221225473, &mut results, 0, 102);
