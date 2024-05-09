@@ -13,6 +13,15 @@ impl Polynomial {
         }
         result
     }
+
+    /// Adjusted from https://github.com/lambdaclass/STARK101-rs/blob/main/stark101/src/polynomial.rs#L264
+    pub fn compose(&self, other: Polynomial) -> Polynomial {
+        let mut res = Polynomial::new(vec![]);
+        for coef in self.clone().coefficients.into_iter().rev() {
+            res = other.multiply(&res).add(&Polynomial::new(vec![coef]));
+        }
+        res
+    }
 }
 
 #[cfg(test)]
@@ -103,5 +112,23 @@ mod tests {
         let pol: Polynomial = Polynomial::new(coeffs);
         let elem = FiniteFieldElement::new_fielded(value, FiniteField::new(i128::MAX));
         assert_eq!(pol.evaluate(elem).value, expected_result);
+    }
+
+    #[test]
+    fn compose_trivial() {
+        let first: Polynomial = Polynomial::new([0, 1].to_vec());
+        let second: Polynomial = Polynomial::new([0, 1].to_vec());
+
+        // x ∘ x
+        assert_eq!(first.compose(second).coefficients, [0, 1]);
+    }
+
+    #[test]
+    fn compose() {
+        let first: Polynomial = Polynomial::new([0, 1, 1].to_vec());
+        let second: Polynomial = Polynomial::new([1, 1].to_vec());
+
+        // x^2 + x ∘ x + 1
+        assert_eq!(first.compose(second).coefficients, [2, 3, 1]);
     }
 }
