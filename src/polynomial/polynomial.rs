@@ -2,21 +2,6 @@ use crate::finite_field::FiniteFieldElement;
 use core::fmt;
 
 #[derive(Debug, Clone)]
-pub struct RationalPolynomial {
-    pub numerator: Polynomial,
-    pub denominator: Polynomial,
-}
-
-impl RationalPolynomial {
-    pub fn new(numerator: Polynomial, denominator: Polynomial) -> Self {
-        RationalPolynomial {
-            numerator,
-            denominator,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct Polynomial {
     pub coefficients: Vec<i128>,
 }
