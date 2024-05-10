@@ -1,3 +1,5 @@
+use crate::number::modulo_multiply;
+
 use super::polynomial::Polynomial;
 
 impl Polynomial {
@@ -36,7 +38,39 @@ impl Polynomial {
             for j in (0..bpos).rev() {
                 a[i + j] -= divisor.coefficients[j] * quot;
             }
-            apos = apos.wrapping_sub(1);
+            apos -= 1;
+        }
+        let remainder = self.sub(&result.multiply(divisor));
+
+        (result, remainder)
+    }
+
+    pub fn div_modulo(&self, divisor: &Polynomial, modulus: i128) -> (Polynomial, Polynomial) {
+        // Ensure that the divisor is not zero
+        if divisor.coefficients.iter().all(|&c| c == 0) {
+            panic!("Division by zero");
+        }
+
+        let mut apos = self.degree();
+        let mut a = self.coefficients.to_vec();
+        let bpos = divisor.degree();
+
+        if apos < bpos {
+            panic!("Invalid division");
+        }
+
+        let mut result = Polynomial {
+            coefficients: vec![0; apos - bpos + 1],
+        };
+
+        for i in (0..result.coefficients.len()).rev() {
+            let quot = a[apos] / divisor.coefficients[bpos];
+            result.coefficients[i] = quot;
+            for j in (0..bpos).rev() {
+                //a[i + j] -= divisor.coefficients[j] * quot;
+                a[i + j] -= modulo_multiply(divisor.coefficients[j], quot, modulus);
+            }
+            apos -= 1;
         }
         let remainder = self.sub(&result.multiply(divisor));
 
