@@ -23,7 +23,7 @@ pub struct FiniteFieldElement {
 
 /// TODO: consider what to do when i128 overflows
 impl FiniteFieldElement {
-    pub const DEFAULT_FIELD_SIZE: i128 = 3 * 2 ^ 30 + 1;
+    pub const DEFAULT_FIELD_SIZE: i128 = 3 * 2_i128.pow(30) + 1;
     const DEFAULT_FIELD: FiniteField = FiniteField {
         prime: Self::DEFAULT_FIELD_SIZE,
     };

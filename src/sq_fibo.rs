@@ -30,7 +30,7 @@ pub fn evaluate_sq_fibo(
 
 #[cfg(test)]
 mod tests {
-    use crate::sq_fibo::evaluate_sq_fibo;
+    use crate::{finite_field::FiniteFieldElement, sq_fibo::evaluate_sq_fibo};
 
     #[test]
     fn sq_fibo_no_modulo() {
@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn sq_fibo_full() {
         let mut results = vec![];
-        evaluate_sq_fibo(1, 3141592, 3221225473, &mut results, 0, 1023);
+        evaluate_sq_fibo(1, 3141592, 3221225473, &mut results, 0, 102);
         assert_eq!(results[1022], 2338775057);
     }
 }
