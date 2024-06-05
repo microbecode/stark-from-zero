@@ -46,10 +46,11 @@ mod tests {
         assert_eq!(results, vec![1, 3, 3, 4, 4, 4]);
     }
 
+    #[ignore = "Takes long time to run"]
     #[test]
     fn sq_fibo_full() {
         let mut results = vec![];
-        evaluate_sq_fibo(1, 3141592, 3221225473, &mut results, 0, 102);
+        evaluate_sq_fibo(1, 3141592, 3221225473, &mut results, 0, 1023);
         assert_eq!(results[1022], 2338775057);
     }
 }

@@ -1,3 +1,5 @@
+use crate::{finite_field::FiniteFieldElement, number::modulo_multiply};
+
 use super::polynomial::Polynomial;
 
 impl Polynomial {
@@ -7,7 +9,9 @@ impl Polynomial {
             coefficients: self
                 .coefficients
                 .iter()
-                .map(|&coeff| coeff * scalar)
+                .map(|&coeff| {
+                    modulo_multiply(coeff, scalar, FiniteFieldElement::DEFAULT_FIELD_SIZE)
+                })
                 .collect(),
         }
     }
@@ -17,7 +21,9 @@ impl Polynomial {
 
         for (i, &coeff1) in self.coefficients.iter().enumerate() {
             for (j, &coeff2) in other.coefficients.iter().enumerate() {
-                result[i + j] += coeff1 * coeff2;
+                result[i + j] = result[i + j]
+                    + modulo_multiply(coeff1, coeff2, FiniteFieldElement::DEFAULT_FIELD_SIZE)
+                    & FiniteFieldElement::DEFAULT_FIELD_SIZE;
             }
         }
 
@@ -66,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn multiply() {
+    fn multiply5() {
         // f(x) = 3x^2 + 0x + 4
         let coeffs = [4_i128, 0_i128, 3_i128].to_vec();
         let poly1 = Polynomial::new(coeffs);

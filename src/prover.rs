@@ -56,6 +56,8 @@ pub fn prove(trace: Trace, field: FiniteField, generator: i128) {
             field.prime,
         );
 
+    // p2
+
     let part_one: Polynomial = f.compose(poly_x.clone().multiply_scalar(g.pow(2).value));
     let part_two: Polynomial = poly_zero.sub_modulo(
         &f.compose(poly_x.clone().multiply_scalar(g.value)).pow(2),
