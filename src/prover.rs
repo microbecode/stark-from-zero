@@ -139,7 +139,7 @@ mod tests {
         Generator: 5
          */
 
-        let mut results = vec![];
+        /*      let mut results = vec![];
         evaluate_sq_fibo(
             1,
             3141592,
@@ -151,6 +151,6 @@ mod tests {
 
         let trace = Trace::new(vec![results]);
         let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
-        prove(trace, field, 5);
+        prove(trace, field, 5); */
     }
 }

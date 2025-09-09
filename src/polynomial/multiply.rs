@@ -21,9 +21,9 @@ impl Polynomial {
 
         for (i, &coeff1) in self.coefficients.iter().enumerate() {
             for (j, &coeff2) in other.coefficients.iter().enumerate() {
-                result[i + j] = result[i + j]
-                    + modulo_multiply(coeff1, coeff2, FiniteFieldElement::DEFAULT_FIELD_SIZE)
-                    & FiniteFieldElement::DEFAULT_FIELD_SIZE;
+                result[i + j] = (result[i + j]
+                    + modulo_multiply(coeff1, coeff2, FiniteFieldElement::DEFAULT_FIELD_SIZE))
+                    % FiniteFieldElement::DEFAULT_FIELD_SIZE;
             }
         }
 

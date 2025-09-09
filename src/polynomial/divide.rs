@@ -13,36 +13,43 @@ impl Polynomial {
         }
     }
 
-    /// https://github.com/facebook/winterfell/blob/09525751727a283dfbf5e569a09909b82380e059/math/src/polynom/mod.rs#L397
     pub fn div(&self, divisor: &Polynomial) -> (Polynomial, Polynomial) {
         // Ensure that the divisor is not zero
         if divisor.coefficients.iter().all(|&c| c == 0) {
             panic!("Division by zero");
         }
 
-        let mut apos = self.degree();
-        let mut a = self.coefficients.to_vec();
-        let bpos = divisor.degree();
+        let dividend_degree = self.degree();
+        let divisor_degree = divisor.degree();
 
-        if apos < bpos {
+        if dividend_degree < divisor_degree {
             panic!("Invalid division");
         }
 
-        let mut result = Polynomial {
-            coefficients: vec![0; apos - bpos + 1],
-        };
+        let mut dividend = self.coefficients.to_vec();
+        let mut quotient_coeffs = vec![0; dividend_degree - divisor_degree + 1];
 
-        for i in (0..result.coefficients.len()).rev() {
-            let quot = a[apos] / divisor.coefficients[bpos];
-            result.coefficients[i] = quot;
-            for j in (0..bpos).rev() {
-                a[i + j] -= divisor.coefficients[j] * quot;
+        // Perform polynomial long division
+        for i in (0..quotient_coeffs.len()).rev() {
+            let current_degree = divisor_degree + i;
+            if current_degree < dividend.len() && dividend[current_degree] != 0 {
+                let quot = dividend[current_degree] / divisor.coefficients[divisor_degree];
+                quotient_coeffs[i] = quot;
+
+                // Subtract quot * divisor from dividend
+                for j in 0..=divisor_degree {
+                    if current_degree - divisor_degree + j < dividend.len() {
+                        dividend[current_degree - divisor_degree + j] -=
+                            divisor.coefficients[j] * quot;
+                    }
+                }
             }
-            apos -= 1;
         }
-        let remainder = self.sub(&result.multiply(divisor));
 
-        (result, remainder)
+        let quotient = Polynomial::new(quotient_coeffs);
+        let remainder = Polynomial::new(dividend).trim();
+
+        (quotient, remainder)
     }
 
     pub fn div_modulo(&self, divisor: &Polynomial, modulus: i128) -> (Polynomial, Polynomial) {
@@ -163,7 +170,6 @@ mod tests {
         let (q, r) = poly1.div(&poly2);
 
         // x^2 + x + 3 , remainder: 5
-        println!("RESULT {} , {}", q, r);
         assert_eq!(q.coefficients.len(), 3);
         assert_eq!(q.coefficients[0], 3);
         assert_eq!(q.coefficients[1], 1);
@@ -186,7 +192,6 @@ mod tests {
         let (q, r) = poly1.div(&poly2);
 
         // 3x^2 + x + 1 , remainder: 4x - 3
-        println!("RESULT {} , {}", q, r);
         assert_eq!(q.coefficients.len(), 3);
         assert_eq!(q.coefficients[0], 1);
         assert_eq!(q.coefficients[1], 1);
