@@ -1,44 +1,52 @@
 use super::polynomial::Polynomial;
+use crate::finite_field::FiniteFieldElement;
 
-/// Adjusted from https://en.wikibooks.org/wiki/Algorithm_Implementation/Mathematics/Polynomial_interpolation
+/// Lagrange interpolation over a finite field
+///
+/// Given points (x_i, y_i), returns the unique polynomial P(x)
+/// such that P(x_i) = y_i for all i.
 pub fn lagrange_interpolation(points: &[(i128, i128)]) -> Polynomial {
-    let numpts = points.len();
-
-    let mut thepoly = vec![0.0; numpts];
-    let mut theterm = vec![0.0; numpts];
-
-    for i in 0..numpts {
-        let mut prod = 1.0;
-        for j in 0..numpts {
-            theterm[j] = 0.0;
-        }
-        for j in 0..numpts {
-            if i != j {
-                prod *= (points[i].0 - points[j].0) as f64;
-            }
-        }
-
-        theterm[0] = points[i].1 as f64 / prod;
-
-        for j in 0..numpts {
-            if i != j {
-                for k in (1..numpts).rev() {
-                    theterm[k] += theterm[k - 1];
-                    theterm[k - 1] *= -points[j].0 as f64;
-                }
-            }
-        }
-
-        for j in 0..numpts {
-            thepoly[j] += theterm[j];
-        }
+    let n = points.len();
+    if n == 0 {
+        return Polynomial::new(vec![]);
     }
 
-    // Mutate to integers
+    // Start with the zero polynomial
     let mut result = Polynomial::new(vec![]);
-    for i in thepoly {
-        result.coefficients.push(i as i128);
+
+    // Classic Lagrange basis construction over a finite field:
+    // P(x) = Σ_i y_i · L_i(x)
+    // where L_i(x) = ∏_{j≠i} (x − x_j) / (x_i − x_j)
+    for i in 0..n {
+        let (xi, yi) = points[i];
+
+        // Build numerator: ∏_{j≠i} (x − x_j)
+        // Using our coeff convention, (x − x_j) is represented as [-x_j, 1]
+        let mut basis = Polynomial::new(vec![1]); // 1 as a polynomial
+        for j in 0..n {
+            if i == j {
+                continue;
+            }
+            let xj = points[j].0;
+            basis = basis.multiply(&Polynomial::new(vec![-xj, 1]));
+        }
+
+        // Denominator: ∏_{j≠i} (x_i − x_j) in the field
+        let mut denom = FiniteFieldElement::new(1);
+        for j in 0..n {
+            if i == j {
+                continue;
+            }
+            let xj = points[j].0;
+            denom = denom.multiply(FiniteFieldElement::new(xi - xj));
+        }
+
+        // Scale basis by y_i * denom^{-1} in the field, then accumulate
+        let scale = FiniteFieldElement::new(yi).multiply(denom.inverse());
+        let scaled = basis.multiply_scalar(scale.value);
+        result = result.add(&scaled);
     }
+
     result
 }
 
@@ -62,53 +70,46 @@ mod tests {
         let poly = lagrange_interpolation(&points);
 
         // f(x) = 2
+        // Representation: [2] (constant term only)
         assert_eq!(poly.coefficients.len(), 1);
-        assert_eq!(poly.coefficients[0], 2);
+        assert_eq!(poly.coefficients[0].value, 2);
     }
 
     #[test]
     fn lagrange_two_points() {
+        // Points (1, 2), (2, 4) ⇒ line f(x) = 2x
+        // Representation: [0, 2]
         let points = vec![(1, 2), (2, 4)];
 
         let poly = lagrange_interpolation(&points);
-        // -4x + 12
-        assert_eq!(poly.coefficients.len(), 2);
-        assert_eq!(poly.coefficients[0], 0);
-        assert_eq!(poly.coefficients[1], 2);
+        // Expected: 2x (coeffs [0, 2])
+        assert_eq!(poly.to_i128_coeffs(), [0, 2]);
 
         // Same result if points are other way around
         let points = vec![(2, 4), (1, 2)];
-
         let poly = lagrange_interpolation(&points);
-        // -4x + 12
-        assert_eq!(poly.coefficients.len(), 2);
-        assert_eq!(poly.coefficients[0], 0);
-        assert_eq!(poly.coefficients[1], 2);
+        assert_eq!(poly.to_i128_coeffs(), [0, 2]);
     }
 
     #[test]
     fn lagrange_three_points() {
+        // Points (0, -2), (1, 6), (-5, 48)
+        // Expected polynomial: f(x) = 3x^2 + 5x − 2
+        // Representation: [-2, 5, 3]
         let points = vec![(0, -2), (1, 6), (-5, 48)];
 
         let poly = lagrange_interpolation(&points);
-        // https://www.wolframalpha.com/input?i=interpolating+polynomial+calculator&assumption=%7B%22F%22%2C+%22InterpolatingPolynomialCalculator%22%2C+%22data2%22%7D+-%3E%22%7B%280%2C+-2%29%2C+%281%2C+6%29%2C+%28-5%2C+48%29%7D%22
-        // f(x) = 3x^2  + 5x - 2
-        println!("POL, {}", poly);
-        assert_eq!(poly.coefficients.len(), 3);
-        assert_eq!(poly.coefficients[0], -2);
-        assert_eq!(poly.coefficients[1], 5);
-        assert_eq!(poly.coefficients[2], 3);
+        assert_eq!(poly.to_i128_coeffs(), [-2, 5, 3]);
     }
 
     #[test]
     fn lagrange_three_points2() {
+        // Points (1, 1), (2, 4), (3, 9)
+        // Expected polynomial: f(x) = x^2
+        // Representation: [0, 0, 1]
         let points = vec![(1, 1), (2, 4), (3, 9)];
 
         let poly = lagrange_interpolation(&points);
-        // f(x) = x^2
-        assert_eq!(poly.coefficients.len(), 3);
-        assert_eq!(poly.coefficients[0], 0);
-        assert_eq!(poly.coefficients[1], 0);
-        assert_eq!(poly.coefficients[2], 1);
+        assert_eq!(poly.to_i128_coeffs(), [0, 0, 1]);
     }
 }

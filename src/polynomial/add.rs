@@ -1,22 +1,28 @@
 use super::polynomial::Polynomial;
+use crate::finite_field::FiniteFieldElement;
 
 impl Polynomial {
     pub fn add(&self, other: &Polynomial) -> Polynomial {
-        let mut result_coeffs =
-            vec![0; std::cmp::max(self.coefficients.len(), other.coefficients.len())];
+        let a_len = self.coefficients.len();
+        let b_len = other.coefficients.len();
+        let max_len = if a_len > b_len { a_len } else { b_len };
+        if max_len == 0 {
+            return Polynomial::new(vec![]);
+        }
+
+        let mut result_coeffs: Vec<FiniteFieldElement> = vec![FiniteFieldElement::ZERO; max_len];
 
         // Copy original
         for i in 0..self.coefficients.len() {
-            result_coeffs[i] += self.coefficients[i];
+            result_coeffs[i] = self.coefficients[i];
         }
 
+        // Add other in the field
         for i in 0..other.coefficients.len() {
-            result_coeffs[i] += other.coefficients[i];
+            result_coeffs[i] = result_coeffs[i].add(other.coefficients[i]);
         }
 
-        Polynomial {
-            coefficients: result_coeffs,
-        }
+        Polynomial::new_ff(result_coeffs)
     }
 }
 
@@ -35,11 +41,11 @@ mod tests {
 
         let added = non_empty_poly.add(&empty_poly);
         assert_eq!(added.coefficients.len(), 1);
-        assert_eq!(added.coefficients[0], 5);
+        assert_eq!(added.coefficients[0].value, 5);
 
         let added = empty_poly.add(&non_empty_poly);
         assert_eq!(added.coefficients.len(), 1);
-        assert_eq!(added.coefficients[0], 5);
+        assert_eq!(added.coefficients[0].value, 5);
     }
 
     #[test]
@@ -55,8 +61,8 @@ mod tests {
         let added = poly1.add(&poly2);
 
         assert_eq!(added.coefficients.len(), 3);
-        assert_eq!(added.coefficients[0], 4);
-        assert_eq!(added.coefficients[1], 7);
-        assert_eq!(added.coefficients[2], 5);
+        assert_eq!(added.coefficients[0].value, 4);
+        assert_eq!(added.coefficients[1].value, 7);
+        assert_eq!(added.coefficients[2].value, 5);
     }
 }

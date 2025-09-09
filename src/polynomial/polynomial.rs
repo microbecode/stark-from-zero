@@ -3,24 +3,33 @@ use core::fmt;
 
 #[derive(Debug, Clone)]
 pub struct Polynomial {
-    pub coefficients: Vec<i128>,
+    pub coefficients: Vec<FiniteFieldElement>,
 }
 
 impl Polynomial {
-    /// Note that the coefficients are enumerated from the "right": the first entry is for constant value.
-    /// The second entry is for coefficient * x, third entry for coefficient * x^2, etc
+    /// Construct from raw i128 coefficients, mapping into the finite field
     pub fn new(coefficients: Vec<i128>) -> Self {
+        Polynomial {
+            coefficients: coefficients
+                .into_iter()
+                .map(FiniteFieldElement::new)
+                .collect(),
+        }
+    }
+
+    /// Construct from finite field elements
+    pub fn new_ff(coefficients: Vec<FiniteFieldElement>) -> Self {
         Polynomial { coefficients }
     }
 
-    /// Returns the degree of the polynomial
+    /// Returns the degree of the polynomial (highest non-zero coefficient in the field)
     pub fn degree(&self) -> usize {
         for i in (0..self.coefficients.len()).rev() {
-            if self.coefficients[i] != self::FiniteFieldElement::ZERO.value {
+            if self.coefficients[i].value != 0 {
                 return i;
             }
         }
-        return 0;
+        0
     }
 
     /// Returns a polynomial where all coefficients are zero except the highest term
@@ -28,8 +37,9 @@ impl Polynomial {
         let highest_degree_index = self.coefficients.len() - 1;
 
         // Create a new vector to store the coefficients of the highest degree term
-        let mut highest_degree_coefficients = vec![0_i128; highest_degree_index];
-        highest_degree_coefficients.push(self.coefficients[highest_degree_index]);
+        let mut highest_degree_coefficients =
+            vec![FiniteFieldElement::new(0); highest_degree_index];
+        highest_degree_coefficients.push(self.coefficients[highest_degree_index].clone());
 
         // Create a new polynomial with the highest degree term
         Polynomial {
@@ -37,13 +47,13 @@ impl Polynomial {
         }
     }
 
-    /// Remove all zero coefficients from the start
+    /// Remove all zero coefficients from the end
     pub fn trim(&self) -> Polynomial {
         // Find the index of the last non-zero coefficient from the end
         let end_index = self
             .coefficients
             .iter()
-            .rposition(|&c| c != 0)
+            .rposition(|c| c.value != 0)
             .map_or(0, |i| i + 1);
 
         // Create a new polynomial with trimmed coefficients
@@ -51,18 +61,23 @@ impl Polynomial {
             coefficients: self.coefficients[..end_index].to_vec(),
         }
     }
+
+    /// Convenience: export coefficients as i128 values
+    pub fn to_i128_coeffs(&self) -> Vec<i128> {
+        self.coefficients.iter().map(|c| c.value).collect()
+    }
 }
 
 impl fmt::Display for Polynomial {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut terms = Vec::new();
-        for (i, &coeff) in self.coefficients.iter().enumerate() {
-            if coeff != 0 {
+        for (i, coeff) in self.coefficients.iter().enumerate() {
+            if coeff.value != 0 {
                 let degree = i;
                 let term_str = match degree {
-                    0 => format!("{}", coeff),
-                    1 => format!("{}x", coeff),
-                    _ => format!("{}x^{}", coeff, degree),
+                    0 => format!("{}", coeff.value),
+                    1 => format!("{}x", coeff.value),
+                    _ => format!("{}x^{}", coeff.value, degree),
                 };
                 terms.push(term_str);
             }
@@ -75,8 +90,6 @@ impl fmt::Display for Polynomial {
         }
     }
 }
-
-/// Based on https://en.wikibooks.org/wiki/Algorithm_Implementation/Mathematics/Polynomial_interpolation
 
 #[cfg(test)]
 mod tests {
@@ -91,19 +104,24 @@ mod tests {
         let coeffs = [4_i128, 0, 3].to_vec();
         let poly1 = Polynomial::new(coeffs);
         assert_eq!(poly1.degree(), 2);
+
+        // Ensure negative multiples of field are treated as zero
+        let p = FiniteFieldElement::DEFAULT_FIELD_SIZE;
+        let coeffs = [1_i128, -(p), 0, 0].to_vec();
+        let poly1 = Polynomial::new(coeffs);
+        assert_eq!(poly1.degree(), 0);
     }
 
     #[test]
     fn leading_term() {
         let coeffs = [4_i128].to_vec();
         let poly1 = Polynomial::new(coeffs);
-        //  assert_eq!(poly1.leading_term().coefficients.len(), 1);
-        assert_eq!(poly1.leading_term().coefficients[0], 4);
+        assert_eq!(poly1.leading_term().coefficients[0].value, 4);
 
         let coeffs = [2_i128, 0, 3].to_vec();
         let poly1 = Polynomial::new(coeffs);
-        assert_eq!(poly1.leading_term().coefficients[0], 0);
-        assert_eq!(poly1.leading_term().coefficients[2], 3);
+        assert_eq!(poly1.leading_term().coefficients[0].value, 0);
+        assert_eq!(poly1.leading_term().coefficients[2].value, 3);
     }
 
     #[test]
@@ -111,21 +129,20 @@ mod tests {
         let coeffs = vec![0_i128, 2, 4];
         let mut poly = Polynomial::new(coeffs.clone());
         poly = poly.trim();
-        assert_vectors_equal(&poly.coefficients, &coeffs);
+        assert_eq!(poly.to_i128_coeffs(), coeffs);
 
         let coeffs = vec![0_i128, 2, 0, 4, 0];
         let should_result = vec![0_i128, 2, 0, 4];
         let mut poly = Polynomial::new(coeffs.clone());
         poly = poly.trim();
-        assert_vectors_equal(&poly.coefficients, &should_result);
+        assert_eq!(poly.to_i128_coeffs(), should_result);
 
-        fn assert_vectors_equal(a: &[i128], b: &[i128]) {
-            assert_eq!(a.len(), b.len()); // Ensure vectors have the same length
-
-            // Compare each element of the vectors
-            for (x, y) in a.iter().zip(b.iter()) {
-                assert_eq!(x, y);
-            }
-        }
+        // Ensure that coefficients equal to 0 mod p are trimmed
+        let p = FiniteFieldElement::DEFAULT_FIELD_SIZE;
+        let coeffs = vec![0_i128, 2, -p, 0];
+        let should_result = vec![0_i128, 2];
+        let poly = Polynomial::new(coeffs);
+        let poly = poly.trim();
+        assert_eq!(poly.to_i128_coeffs(), should_result);
     }
 }

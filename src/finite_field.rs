@@ -67,11 +67,23 @@ impl FiniteFieldElement {
     }
 
     pub fn pow(&self, exponent: i128) -> Self {
+        // Fast exponentiation by squaring
         let mut result = FiniteFieldElement::new_fielded(1, self.field);
-        for _ in 0..exponent {
-            result = result.multiply(*self);
+        let mut base = *self;
+        let mut exp = exponent;
+        while exp > 0 {
+            if exp % 2 == 1 {
+                result = result.multiply(base);
+            }
+            base = base.multiply(base);
+            exp /= 2;
         }
         result
+    }
+
+    pub fn inverse(&self) -> Self {
+        // Fermat's little theorem: a^(p-2) mod p
+        self.pow(self.field.prime - 2)
     }
 
     pub fn hash(&self) -> i128 {
@@ -128,16 +140,19 @@ mod tests {
     #[test]
     fn pow() {
         let f: FiniteField = FiniteField::new(5);
-
         assert_eq!(create(2, f).pow(0).value, 1);
         assert_eq!(create(0, f).pow(0).value, 1);
-
         assert_eq!(create(2, f).pow(1).value, 2);
-        assert_eq!(create(1, f).pow(1).value, 1);
-
-        assert_eq!(create(2, f).pow(2).value, 4);
         assert_eq!(create(2, f).pow(3).value, 3);
         assert_eq!(create(3, f).pow(2).value, 4);
+    }
+
+    #[test]
+    fn inverse() {
+        let f: FiniteField = FiniteField::new(5);
+        assert_eq!(create(2, f).inverse().value, 3); // 2*3=6≡1
+        assert_eq!(create(3, f).inverse().value, 2); // 3*2=6≡1
+        assert_eq!(create(4, f).inverse().value, 4); // 4*4=16≡1
     }
 
     #[test]

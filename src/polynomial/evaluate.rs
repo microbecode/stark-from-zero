@@ -5,20 +5,23 @@ use super::polynomial::Polynomial;
 impl Polynomial {
     pub fn evaluate(&self, x: FiniteFieldElement) -> FiniteFieldElement {
         let mut result = FiniteFieldElement::new_fielded(0, x.field);
-        for (i, &coeff) in self.coefficients.iter().enumerate() {
-            let co_elem = FiniteFieldElement::new_fielded(coeff, x.field);
+        for (i, coeff) in self.coefficients.iter().enumerate() {
+            let coeff_in_x_field = FiniteFieldElement::new_fielded(coeff.value, x.field);
             let pow = x.pow(i as i128);
-            let multi = pow.multiply(co_elem);
+            let multi = pow.multiply(coeff_in_x_field);
             result = result.add(multi);
         }
         result
     }
 
-    /// Adjusted from https://github.com/lambdaclass/STARK101-rs/blob/main/stark101/src/polynomial.rs#L264
+    /// Compose the polynomial with another polynomial. For example:
+    /// self = f(x) and other = g(x), then this returns f(g(x))
+    /// Adjusted from https://github.com/lambdaclass/STARK101-rs/blob/f2bb33501de4ae6006f79b53fa062e11bb0a6288/stark101/src/polynomial.rs#L264
     pub fn compose(&self, other: Polynomial) -> Polynomial {
+        // Horner's method: res = 0; for c in self coeffs (high..low): res = other*res + c
         let mut res = Polynomial::new(vec![]);
         for coef in self.clone().coefficients.into_iter().rev() {
-            res = other.multiply(&res).add(&Polynomial::new(vec![coef]));
+            res = other.multiply(&res).add(&Polynomial::new(vec![coef.value]));
         }
         res
     }
@@ -120,7 +123,7 @@ mod tests {
         let second: Polynomial = Polynomial::new([0, 1].to_vec());
 
         // x ∘ x
-        assert_eq!(first.compose(second).coefficients, [0, 1]);
+        assert_eq!(first.compose(second).to_i128_coeffs(), [0, 1]);
     }
 
     #[test]
@@ -129,6 +132,6 @@ mod tests {
         let second: Polynomial = Polynomial::new([1, 1].to_vec());
 
         // x^2 + x ∘ x + 1
-        assert_eq!(first.compose(second).coefficients, [2, 3, 1]);
+        assert_eq!(first.compose(second).to_i128_coeffs(), [2, 3, 1]);
     }
 }

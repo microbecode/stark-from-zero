@@ -1,33 +1,36 @@
-use crate::{finite_field::FiniteFieldElement, number::modulo_multiply};
+use crate::finite_field::FiniteFieldElement;
 
 use super::polynomial::Polynomial;
 
 impl Polynomial {
     // Multiply the polynomial by a scalar
     pub fn multiply_scalar(&self, scalar: i128) -> Polynomial {
-        Polynomial {
-            coefficients: self
-                .coefficients
-                .iter()
-                .map(|&coeff| {
-                    modulo_multiply(coeff, scalar, FiniteFieldElement::DEFAULT_FIELD_SIZE)
-                })
-                .collect(),
-        }
+        let scalar_elem = FiniteFieldElement::new(scalar);
+        let coeffs: Vec<FiniteFieldElement> = self
+            .coefficients
+            .iter()
+            .map(|coeff| coeff.multiply(scalar_elem))
+            .collect();
+        Polynomial::new_ff(coeffs)
     }
 
     pub fn multiply(&self, other: &Polynomial) -> Polynomial {
-        let mut result = vec![0; self.coefficients.len() + other.coefficients.len() - 1];
+        let a_len = self.coefficients.len();
+        let b_len = other.coefficients.len();
+        if a_len == 0 || b_len == 0 {
+            return Polynomial::new(vec![]);
+        }
 
-        for (i, &coeff1) in self.coefficients.iter().enumerate() {
-            for (j, &coeff2) in other.coefficients.iter().enumerate() {
-                result[i + j] = (result[i + j]
-                    + modulo_multiply(coeff1, coeff2, FiniteFieldElement::DEFAULT_FIELD_SIZE))
-                    % FiniteFieldElement::DEFAULT_FIELD_SIZE;
+        let mut result = vec![FiniteFieldElement::ZERO; a_len + b_len - 1];
+
+        for (i, coeff1) in self.coefficients.iter().enumerate() {
+            for (j, coeff2) in other.coefficients.iter().enumerate() {
+                let prod = coeff1.multiply(*coeff2);
+                result[i + j] = result[i + j].add(prod);
             }
         }
 
-        Polynomial::new(result)
+        Polynomial::new_ff(result)
     }
 }
 
@@ -53,9 +56,9 @@ mod tests {
         let multiplied = poly.multiply_scalar(0);
 
         assert_eq!(multiplied.coefficients.len(), 3);
-        assert_eq!(multiplied.coefficients[0], 0);
-        assert_eq!(multiplied.coefficients[1], 0);
-        assert_eq!(multiplied.coefficients[2], 0);
+        assert_eq!(multiplied.coefficients[0].value, 0);
+        assert_eq!(multiplied.coefficients[1].value, 0);
+        assert_eq!(multiplied.coefficients[2].value, 0);
     }
 
     #[test]
@@ -66,9 +69,9 @@ mod tests {
         let multiplied = poly.multiply_scalar(3);
 
         assert_eq!(multiplied.coefficients.len(), 3);
-        assert_eq!(multiplied.coefficients[0], 12);
-        assert_eq!(multiplied.coefficients[1], 0);
-        assert_eq!(multiplied.coefficients[2], 9);
+        assert_eq!(multiplied.coefficients[0].value, 12);
+        assert_eq!(multiplied.coefficients[1].value, 0);
+        assert_eq!(multiplied.coefficients[2].value, 9);
     }
 
     #[test]
@@ -85,10 +88,10 @@ mod tests {
 
         // (3x^2 + 4)(2x^2 + 7x) = 6x^4 + 21x^3 + 8x^2 + 28x + 0
         assert_eq!(multiplied.coefficients.len(), 5);
-        assert_eq!(multiplied.coefficients[0], 0);
-        assert_eq!(multiplied.coefficients[1], 28);
-        assert_eq!(multiplied.coefficients[2], 8);
-        assert_eq!(multiplied.coefficients[3], 21);
-        assert_eq!(multiplied.coefficients[4], 6);
+        assert_eq!(multiplied.coefficients[0].value, 0);
+        assert_eq!(multiplied.coefficients[1].value, 28);
+        assert_eq!(multiplied.coefficients[2].value, 8);
+        assert_eq!(multiplied.coefficients[3].value, 21);
+        assert_eq!(multiplied.coefficients[4].value, 6);
     }
 }
