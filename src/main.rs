@@ -1,16 +1,16 @@
 use stark_from_zero::{
     finite_field::{FiniteField, FiniteFieldElement},
+    prover::{prove_fibonacci, verify_fibonacci_constraints},
     trace::{fibonacci, Trace},
-    //   prover::prove,
 };
 
 fn main() {
-    println!("=== STARK Trace Example ===");
+    println!("=== Simple STARK Prover Example ===");
 
     // Generate a Fibonacci trace
     let trace = fibonacci::generate_fibonacci_trace(8, 1, 1);
 
-    println!("Fibonacci trace (8 steps):");
+    println!("\n📊 Fibonacci trace (8 steps):");
     println!("Step | F(n-2) | F(n-1) | F(n)");
     println!("-----|--------|--------|-----");
 
@@ -24,21 +24,17 @@ fn main() {
         );
     }
 
-    println!(
-        "\nTrace dimensions: {} rows × {} columns",
-        trace.num_rows(),
-        trace.num_columns()
-    );
-
-    // Show how to access specific values
-    println!("\nF(5) = {}", trace.get(5, 2).unwrap());
-    println!("F(6) = {}", trace.get(6, 2).unwrap());
-
-    // Convert to finite field elements
+    // Generate STARK proof
     let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
-    let ff_trace = trace.to_finite_field_elements(field);
-    println!(
-        "\nFirst row in finite field: {:?}",
-        ff_trace[0].iter().map(|e| e.value).collect::<Vec<_>>()
-    );
+    let proof = prove_fibonacci(trace, field);
+
+    // Verify the proof
+    let is_valid = verify_fibonacci_constraints(&proof);
+
+    println!("\n🎯 STARK Proof Result:");
+    if is_valid {
+        println!("   ✅ Proof is VALID - Fibonacci computation is correct!");
+    } else {
+        println!("   ❌ Proof is INVALID - Computation has errors!");
+    }
 }

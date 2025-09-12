@@ -1,155 +1,114 @@
-// use crate::finite_field::{FiniteField, FiniteFieldElement};
-// use crate::merkle_tree::MerkleTree;
-// use crate::number::modulo_multiply;
-// use crate::polynomial::interpolate::lagrange_interpolation;
-// use crate::polynomial::polynomial::Polynomial;
-// use crate::trace::Trace;
+use crate::finite_field::{FiniteField, FiniteFieldElement};
+use crate::merkle_tree::MerkleTree;
+use crate::polynomial::interpolate::lagrange_interpolation;
+use crate::polynomial::polynomial::Polynomial;
+use crate::trace::Trace;
 
-// /// Pretend these are sent to the verifier at intervals
-// pub struct Commitments {
-//     lde_commitment: FiniteFieldElement,
-// }
+/// Simple STARK proof for Fibonacci computation
+pub struct StarkProof {
+    /// Merkle root of the extended trace
+    pub trace_commitment: i128,
+    /// The original trace
+    pub trace: Trace,
+    /// The field used
+    pub field: FiniteField,
+}
 
-// pub fn prove(trace: Trace, field: FiniteField, generator: i128) {
-//     let g_elem = FiniteFieldElement::new_fielded(generator, field);
-//     //  let poly_g = Polynomial::new([g_elem.pow(3 * 2_i128.pow(20)).value].to_vec());
-//     let g = g_elem.pow(3 * 2_i128.pow(20));
+/// Step 1: Basic prover that just commits to the trace
+pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
+    println!("🔍 Starting STARK proof generation...");
+    println!(
+        "   Trace size: {} rows × {} columns",
+        trace.num_rows(),
+        trace.num_columns()
+    );
 
-//     // LDE
-//     let f = get_poly(&trace, generator, field);
-//     let eval_domain = get_eval_domain(g_elem);
+    // For now, let's just commit to the original trace (no LDE yet)
+    let ff_trace = trace.to_finite_field_elements(field);
 
-//     let mut evaluations: Vec<FiniteFieldElement> = vec![];
-//     for i in eval_domain.iter() {
-//         evaluations.push(f.evaluate(*i));
-//     }
-//     let mut tree = MerkleTree::new();
-//     tree.build(&evaluations);
-//     // LDE Commitment "done"
+    // Flatten the trace for Merkle tree (we'll improve this later)
+    let mut flat_trace = Vec::new();
+    for row in &ff_trace {
+        for element in row {
+            flat_trace.push(*element);
+        }
+    }
 
-//     // Constraints
-//     let main_function: Polynomial = Polynomial::new(trace.trace[0].clone());
-//     let poly_one = Polynomial::new([1].to_vec());
+    // Build Merkle tree
+    let mut tree = MerkleTree::new();
+    tree.build(&flat_trace);
 
-//     let poly_neg = Polynomial::new(
-//         [FiniteFieldElement::new(-1 + FiniteFieldElement::DEFAULT_FIELD_SIZE).value].to_vec(),
-//     );
-//     let poly_zero = Polynomial::new([0].to_vec());
-//     let poly_x = Polynomial::new([0, 1].to_vec());
+    let commitment = tree.root().unwrap();
+    println!("   ✅ Trace committed: {}", commitment);
 
-//     let mut poly_1022_coeffs = vec![0; 1022];
-//     poly_1022_coeffs.push(1);
-//     let poly_1022 = Polynomial::new(poly_1022_coeffs);
+    StarkProof {
+        trace_commitment: commitment,
+        trace,
+        field,
+    }
+}
 
-//     let poly_first = main_function
-//         .clone()
-//         .add(&poly_neg)
-//         .div_modulo(&poly_x.clone().sub(&poly_one), field.prime);
+/// Step 2: Verify that the trace follows Fibonacci rules
+pub fn verify_fibonacci_constraints(proof: &StarkProof) -> bool {
+    println!("🔍 Verifying Fibonacci constraints...");
 
-//     let poly_second = main_function
-//         .clone()
-//         .sub_modulo(&Polynomial::new([2338775057].to_vec()), field.prime)
-//         .div_modulo(
-//             &poly_x
-//                 .clone()
-//                 .add(&poly_zero.sub(&Polynomial::new([g_elem.pow(1022).value].to_vec()))),
-//             field.prime,
-//         );
+    let trace = &proof.trace;
+    let mut valid = true;
 
-//     // p2
+    // Check that F(n) = F(n-1) + F(n-2) for all steps after the first two
+    for step in 2..trace.num_rows() {
+        let f_n_minus_2 = trace.get(step, 0).unwrap();
+        let f_n_minus_1 = trace.get(step, 1).unwrap();
+        let f_n = trace.get(step, 2).unwrap();
 
-//     let part_one: Polynomial = f.compose(poly_x.clone().multiply_scalar(g.pow(2).value));
-//     let part_two: Polynomial = poly_zero.sub_modulo(
-//         &f.compose(poly_x.clone().multiply_scalar(g.value)).pow(2),
-//         field.prime,
-//     );
-//     let part_three: Polynomial = poly_zero.sub(&f.compose(poly_x.clone()).pow(2));
-//     let numerator: Polynomial = part_one.add(&part_two).add(&part_three);
+        let expected_f_n = f_n_minus_1 + f_n_minus_2;
 
-//     let mut poly_1024_coeffs = vec![0; 1024];
-//     poly_1024_coeffs.push(1);
-//     let poly_1024 = Polynomial::new(poly_1024_coeffs);
+        if f_n != expected_f_n {
+            println!(
+                "   ❌ Constraint failed at step {}: F({}) = {} but expected {}",
+                step, step, f_n, expected_f_n
+            );
+            valid = false;
+        } else {
+            println!(
+                "   ✅ Step {}: F({}) = {} = F({}) + F({}) = {} + {}",
+                step,
+                step,
+                f_n,
+                step - 1,
+                step - 2,
+                f_n_minus_1,
+                f_n_minus_2
+            );
+        }
+    }
 
-//     let part_one = poly_1024.sub(&poly_one);
-//     let part_two = poly_x
-//         .clone()
-//         .sub(&Polynomial::new([g_elem.pow(1021).value].to_vec()));
-//     let part_three = poly_x.sub_modulo(
-//         &Polynomial::new([g_elem.pow(1022).value].to_vec()),
-//         field.prime,
-//     );
-//     let part_four = poly_x.sub_modulo(
-//         &Polynomial::new([g_elem.pow(1023).value].to_vec()),
-//         field.prime,
-//     );
-//     let (divisor, _) = part_one.div_modulo(
-//         &part_two.multiply(&part_three).multiply(&part_four),
-//         field.prime,
-//     );
+    if valid {
+        println!("   ✅ All Fibonacci constraints verified!");
+    } else {
+        println!("   ❌ Some constraints failed!");
+    }
 
-//     let poly_third = numerator.div_modulo(&divisor, field.prime);
+    valid
+}
 
-//     /*    Commitments {
-//         lde_commitment: FiniteFieldElement::new_fielded(tree.root().unwrap(), field),
-//     } */
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::trace::fibonacci;
 
-// fn get_eval_domain(generator: FiniteFieldElement) -> Vec<FiniteFieldElement> {
-//     // Adjusted from https://github.com/lambdaclass/STARK101-rs/blob/main/part1.ipynb
-//     let exp = (2_i128.pow(30) * 3) / 8192;
-//     let h = generator.pow(exp);
-//     let H: Vec<FiniteFieldElement> = (0..8192).into_iter().map(|i| h.pow(i)).collect();
-//     let eval_domain: Vec<FiniteFieldElement> =
-//         H.into_iter().map(|x| generator.multiply(x)).collect();
-//     eval_domain
-// }
+    #[test]
+    fn test_fibonacci_prover() {
+        // Generate a small Fibonacci trace
+        let trace = fibonacci::generate_fibonacci_trace(5, 1, 1);
+        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
 
-// fn get_poly(trace: &Trace, generator: i128, field: FiniteField) -> Polynomial {
-//     let mut inputs: Vec<(i128, i128)> = vec![];
-//     let mut previous_input_g = 1;
-//     for i in 0..trace.trace[0].len() {
-//         let first = if i == 0 {
-//             1 // first entry should be just 1
-//         } else {
-//             modulo_multiply(previous_input_g, generator, field.prime)
-//         };
-//         previous_input_g = first;
-//         inputs.push((first, trace.trace[0][i]));
-//     }
-//     let int = lagrange_interpolation(&inputs[..]);
-//     int
-// }
+        // Generate proof
+        let proof = prove_fibonacci(trace, field);
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::{
-//         finite_field::{FiniteField, FiniteFieldElement},
-//         sq_fibo::evaluate_sq_fibo,
-//         trace::Trace,
-//     };
+        // Verify constraints
+        let is_valid = verify_fibonacci_constraints(&proof);
 
-//     use super::prove;
-
-//     #[test]
-//     fn prover_test() {
-//         // Using trace from https://starkware.co/stark-101/
-
-//         /*
-//         Field: 3221225473
-//         Generator: 5
-//          */
-//         /*      let mut results = vec![];
-//         evaluate_sq_fibo(
-//             1,
-//             3141592,
-//             FiniteFieldElement::DEFAULT_FIELD_SIZE,
-//             &mut results,
-//             0,
-//             102,
-//         );
-
-//         let trace = Trace::new(vec![results]);
-//         let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
-//         prove(trace, field, 5); */
-//     }
-// }
+        assert!(is_valid, "Fibonacci constraints should be valid");
+    }
+}
