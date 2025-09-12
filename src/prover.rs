@@ -1,3 +1,4 @@
+use crate::evaluation_domain::EvaluationDomain;
 use crate::finite_field::{FiniteField, FiniteFieldElement};
 use crate::merkle_tree::MerkleTree;
 use crate::polynomial::interpolate::lagrange_interpolation;
@@ -12,9 +13,64 @@ pub struct StarkProof {
     pub trace: Trace,
     /// The field used
     pub field: FiniteField,
+    /// The extended trace (LDE)
+    pub extended_trace: Vec<Vec<FiniteFieldElement>>,
 }
 
-/// Step 1: Basic prover that just commits to the trace
+/// Low Degree Extension: Interpolate trace columns and evaluate at larger domain
+fn extend_trace(
+    trace: &Trace,
+    field: FiniteField,
+    extension_factor: usize,
+) -> Vec<Vec<FiniteFieldElement>> {
+    println!("🔄 Performing Low Degree Extension...");
+
+    let original_size = trace.num_rows();
+    let extended_size = original_size * extension_factor;
+
+    println!("   Original trace size: {} steps", original_size);
+    println!(
+        "   Extended trace size: {} steps ({}x extension)",
+        extended_size, extension_factor
+    );
+
+    // Create evaluation domain for the extended size
+    let eval_domain = EvaluationDomain::new_linear(field, extended_size);
+
+    // For each column in the trace, interpolate and extend
+    let mut extended_trace = Vec::new();
+
+    for col in 0..trace.num_columns() {
+        println!("   Extending column {}...", col);
+
+        // Get the original column values
+        let original_column = trace.get_column(col);
+
+        // Create interpolation points: (step, value) pairs
+        let mut points = Vec::new();
+        for (step, &value) in original_column.iter().enumerate() {
+            points.push((step as i128, value));
+        }
+
+        // Interpolate to get polynomial
+        let poly = lagrange_interpolation(&points);
+
+        // Evaluate polynomial at extended domain
+        let mut extended_column = Vec::new();
+        for i in 0..extended_size {
+            let point = eval_domain.element(i);
+            let value = poly.evaluate(point);
+            extended_column.push(value);
+        }
+
+        extended_trace.push(extended_column);
+    }
+
+    println!("   ✅ LDE complete!");
+    extended_trace
+}
+
+/// Step 2: Prover with Low Degree Extension
 pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     println!("🔍 Starting STARK proof generation...");
     println!(
@@ -23,28 +79,30 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
         trace.num_columns()
     );
 
-    // For now, let's just commit to the original trace (no LDE yet)
-    let ff_trace = trace.to_finite_field_elements(field);
+    // Step 1: Perform Low Degree Extension
+    let extension_factor = 4; // Extend 8 steps to 32 steps
+    let extended_trace = extend_trace(&trace, field, extension_factor);
 
-    // Flatten the trace for Merkle tree (we'll improve this later)
-    let mut flat_trace = Vec::new();
-    for row in &ff_trace {
+    // Step 2: Commit to the EXTENDED trace (not the original)
+    let mut flat_extended_trace = Vec::new();
+    for row in &extended_trace {
         for element in row {
-            flat_trace.push(*element);
+            flat_extended_trace.push(*element);
         }
     }
 
-    // Build Merkle tree
+    // Build Merkle tree on extended trace
     let mut tree = MerkleTree::new();
-    tree.build(&flat_trace);
+    tree.build(&flat_extended_trace);
 
     let commitment = tree.root().unwrap();
-    println!("   ✅ Trace committed: {}", commitment);
+    println!("   ✅ Extended trace committed: {}", commitment);
 
     StarkProof {
         trace_commitment: commitment,
         trace,
         field,
+        extended_trace,
     }
 }
 
