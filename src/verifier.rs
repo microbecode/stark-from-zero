@@ -68,17 +68,74 @@ pub fn verify_random_sampling(proof: &StarkProof) -> bool {
     valid
 }
 
+/// Verify random sampling with specific sample points
+pub fn verify_random_sampling_with_points(proof: &StarkProof, sample_points: &[usize]) -> bool {
+    println!(
+        "🎲 Verifying random sampling with {} sample points...",
+        sample_points.len()
+    );
+
+    let mut valid = true;
+
+    for (i, &sample_point) in sample_points.iter().enumerate() {
+        // Evaluate constraint polynomial at this point
+        let extended_eval_domain =
+            EvaluationDomain::new_linear(proof.field, proof.extended_trace.len());
+        let point = extended_eval_domain.element(sample_point);
+        let constraint_value = proof.constraint_poly.evaluate(point);
+
+        if constraint_value.value != 0 {
+            println!(
+                "   ❌ Sample {} (point {}): constraint_value={} (should be 0)",
+                i, sample_point, constraint_value.value
+            );
+            valid = false;
+        } else {
+            println!(
+                "   ✅ Sample {} (point {}): constraint_value=0",
+                i, sample_point
+            );
+        }
+    }
+
+    if valid {
+        println!("   ✅ All random samples verified - constraint polynomial is zero!");
+    } else {
+        println!("   ❌ Some random samples failed verification!");
+    }
+
+    valid
+}
+
+/// Generate random sample points (verifier's job)
+pub fn generate_sample_points(extended_trace_size: usize, num_samples: usize) -> Vec<usize> {
+    println!("🎲 Verifier generating random sample points...");
+
+    let mut sample_points = Vec::new();
+
+    // Simple PRNG for educational purposes
+    // In a real STARK, this would use Fiat-Shamir with the proof commitment
+    let mut rng_state = 12345u64; // Simple seed
+    for _ in 0..num_samples {
+        rng_state = rng_state.wrapping_mul(1103515245).wrapping_add(12345);
+        let sample_point = (rng_state as usize) % extended_trace_size;
+        sample_points.push(sample_point);
+        println!("   Generated sample point: {}", sample_point);
+    }
+
+    println!("   ✅ Generated {} random sample points", num_samples);
+    sample_points
+}
+
 /// Verify the entire STARK proof
 pub fn verify_proof(proof: &StarkProof) -> bool {
     println!("🔍 Verifying STARK proof...");
 
-    // For now, we only have random sampling verification
-    // In a real STARK, this would include:
-    // - Merkle proof verification
-    // - FRI protocol verification
-    // - Additional constraint checks
+    // Generate random sample points (verifier's responsibility)
+    let sample_points = generate_sample_points(proof.extended_trace.len(), 5);
 
-    let is_valid = verify_random_sampling(proof);
+    // Verify using the generated sample points
+    let is_valid = verify_random_sampling_with_points(proof, &sample_points);
 
     if is_valid {
         println!("   ✅ STARK proof is VALID!");
