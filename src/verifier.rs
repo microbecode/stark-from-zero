@@ -10,6 +10,8 @@ pub struct SamplingData {
     pub sample_values: Vec<Vec<FiniteFieldElement>>,
     /// Constraint polynomial values at sample points
     pub constraint_values: Vec<FiniteFieldElement>,
+    /// Merkle proofs for the sample points
+    pub merkle_proofs: Vec<Vec<i128>>,
 }
 
 /// STARK proof structure (shared between prover and verifier)
@@ -20,8 +22,6 @@ pub struct StarkProof {
     pub trace: crate::trace::Trace,
     /// The field used
     pub field: crate::finite_field::FiniteField,
-    /// The extended trace (LDE)
-    pub extended_trace: Vec<Vec<FiniteFieldElement>>,
     /// Constraint polynomial: C(x) = F(x) - F(x-1) - F(x-2)
     pub constraint_poly: Polynomial,
     /// Evaluation domain for the extended trace
@@ -79,8 +79,9 @@ pub fn verify_random_sampling_with_points(proof: &StarkProof, sample_points: &[u
 
     for (i, &sample_point) in sample_points.iter().enumerate() {
         // Evaluate constraint polynomial at this point
+        // Use the original trace size for constraint evaluation (not extended)
         let extended_eval_domain =
-            EvaluationDomain::new_linear(proof.field, proof.extended_trace.len());
+            EvaluationDomain::new_linear(proof.field, proof.trace.num_rows() * 4); // 4x extension
         let point = extended_eval_domain.element(sample_point);
         let constraint_value = proof.constraint_poly.evaluate(point);
 
@@ -102,6 +103,68 @@ pub fn verify_random_sampling_with_points(proof: &StarkProof, sample_points: &[u
         println!("   ✅ All random samples verified - constraint polynomial is zero!");
     } else {
         println!("   ❌ Some random samples failed verification!");
+    }
+
+    valid
+}
+
+/// Verify Merkle proofs for sample points (verifier only verifies, doesn't reconstruct)
+pub fn verify_merkle_proofs(proof: &StarkProof) -> bool {
+    println!("🌳 Verifying Merkle proofs for sample points...");
+
+    let mut valid = true;
+
+    for (i, (&sample_point, merkle_proof)) in proof
+        .sampling_data
+        .sample_points
+        .iter()
+        .zip(proof.sampling_data.merkle_proofs.iter())
+        .enumerate()
+    {
+        // Get the sample values provided by prover
+        let sample_values = &proof.sampling_data.sample_values[i];
+
+        if merkle_proof.is_empty() {
+            println!(
+                "   ❌ Sample {} (point {}): No Merkle proof provided",
+                i, sample_point
+            );
+            valid = false;
+            continue;
+        }
+
+        // Verify the Merkle proof
+        let leaf_hash = sample_values[0].hash(); // Use first column as leaf hash
+        let mut current_hash = leaf_hash;
+
+        // Reconstruct root by following the proof path
+        for sibling in &merkle_proof[..merkle_proof.len() - 1] {
+            current_hash = crate::merkle_tree::hash_two_inputs(current_hash, *sibling);
+        }
+
+        // Check if reconstructed root matches committed root
+        if current_hash == proof.trace_commitment {
+            println!(
+                "   ✅ Sample {} (point {}): Merkle proof verified",
+                i, sample_point
+            );
+            println!(
+                "      Values: {:?}",
+                sample_values.iter().map(|v| v.value).collect::<Vec<_>>()
+            );
+        } else {
+            println!(
+                "   ❌ Sample {} (point {}): Merkle proof failed",
+                i, sample_point
+            );
+            valid = false;
+        }
+    }
+
+    if valid {
+        println!("   ✅ All Merkle proofs verified!");
+    } else {
+        println!("   ❌ Some Merkle proofs failed verification!");
     }
 
     valid
@@ -131,16 +194,31 @@ pub fn generate_sample_points(extended_trace_size: usize, num_samples: usize) ->
 pub fn verify_proof(proof: &StarkProof) -> bool {
     println!("🔍 Verifying STARK proof...");
 
-    // Generate random sample points (verifier's responsibility)
-    let sample_points = generate_sample_points(proof.extended_trace.len(), 5);
+    // Check if we have sample data
+    if proof.sampling_data.sample_points.is_empty() {
+        println!("   ❌ No sample data provided by prover!");
+        return false;
+    }
 
-    // Verify using the generated sample points
-    let is_valid = verify_random_sampling_with_points(proof, &sample_points);
+    // Step 1: Verify Merkle proofs for sample points
+    let merkle_valid = verify_merkle_proofs(proof);
+
+    // Step 2: Verify constraint polynomial at sample points
+    let constraint_valid = verify_random_sampling(proof);
+
+    // Both verifications must pass
+    let is_valid = merkle_valid && constraint_valid;
 
     if is_valid {
         println!("   ✅ STARK proof is VALID!");
     } else {
         println!("   ❌ STARK proof is INVALID!");
+        if !merkle_valid {
+            println!("   ❌ Merkle proof verification failed!");
+        }
+        if !constraint_valid {
+            println!("   ❌ Constraint verification failed!");
+        }
     }
 
     is_valid

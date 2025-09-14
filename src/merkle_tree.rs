@@ -12,7 +12,7 @@ fn next_power_of_two(n: usize) -> usize {
 }
 
 // Proper two-input hash function for Merkle tree nodes
-fn hash_two_inputs(a: i128, b: i128) -> i128 {
+pub fn hash_two_inputs(a: i128, b: i128) -> i128 {
     let ha = hashing::hash(a);
     let hb = hashing::hash(b);
     // Commutative hashing

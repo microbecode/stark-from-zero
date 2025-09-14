@@ -7,7 +7,7 @@ use crate::trace::Trace;
 use crate::verifier::{SamplingData, StarkProof};
 
 /// Low Degree Extension: Interpolate trace columns and evaluate at larger domain
-fn extend_trace(
+pub fn extend_trace(
     trace: &Trace,
     field: FiniteField,
     extension_factor: usize,
@@ -152,17 +152,61 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
         sample_points: Vec::new(),
         sample_values: Vec::new(),
         constraint_values: Vec::new(),
+        merkle_proofs: Vec::new(),
     };
 
     StarkProof {
         trace_commitment: commitment,
         trace,
         field,
-        extended_trace,
         constraint_poly,
         eval_domain,
         sampling_data,
     }
+}
+
+/// Generate Merkle proofs for sample points (prover's job)
+pub fn generate_merkle_proofs(
+    extended_trace: &[Vec<FiniteFieldElement>],
+    sample_points: &[usize],
+) -> Vec<Vec<i128>> {
+    println!(
+        "🌳 Prover generating Merkle proofs for {} sample points...",
+        sample_points.len()
+    );
+
+    // Flatten the extended trace for Merkle tree
+    let mut flat_extended_trace = Vec::new();
+    for row in extended_trace {
+        for element in row {
+            flat_extended_trace.push(*element);
+        }
+    }
+
+    // Build Merkle tree
+    let mut tree = MerkleTree::new();
+    tree.build(&flat_extended_trace);
+
+    // Generate proofs for each sample point
+    let mut merkle_proofs = Vec::new();
+    for &sample_point in sample_points {
+        if let Some(proof) = tree.get_merkle_proof(sample_point) {
+            merkle_proofs.push(proof);
+            println!(
+                "   ✅ Generated Merkle proof for sample point {}",
+                sample_point
+            );
+        } else {
+            println!(
+                "   ❌ Failed to generate Merkle proof for sample point {}",
+                sample_point
+            );
+            merkle_proofs.push(Vec::new()); // Empty proof as fallback
+        }
+    }
+
+    println!("   ✅ Generated {} Merkle proofs", merkle_proofs.len());
+    merkle_proofs
 }
 
 #[cfg(test)]

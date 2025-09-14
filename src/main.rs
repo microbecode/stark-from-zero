@@ -1,8 +1,9 @@
 use stark_from_zero::{
+    evaluation_domain::EvaluationDomain,
     finite_field::{FiniteField, FiniteFieldElement},
-    prover::prove_fibonacci,
+    prover::{extend_trace, generate_merkle_proofs, prove_fibonacci},
     trace::fibonacci,
-    verifier::verify_proof,
+    verifier::{generate_sample_points, verify_proof},
 };
 
 fn main() {
@@ -25,12 +26,44 @@ fn main() {
         );
     }
 
-    // Generate STARK proof
+    // Generate STARK proof (without sample data)
     let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
-    let proof = prove_fibonacci(trace, field);
+    let mut proof = prove_fibonacci(trace, field);
 
-    // Verify the proof using the verifier
+    // Verifier generates sample points
     println!("\n🔍 STARK Verification:");
+    let extended_trace_size = 32; // 8 * 4 extension factor
+    let sample_points = generate_sample_points(extended_trace_size, 5);
+
+    // Prover generates Merkle proofs for the sample points
+    let extended_trace = extend_trace(&proof.trace, proof.field, 4);
+    let merkle_proofs = generate_merkle_proofs(&extended_trace, &sample_points);
+
+    // Prover provides sample values and Merkle proofs
+    let mut sample_values = Vec::new();
+    let mut constraint_values = Vec::new();
+
+    for &sample_point in &sample_points {
+        let mut values = Vec::new();
+        for col in 0..extended_trace.len() {
+            values.push(extended_trace[col][sample_point]);
+        }
+        sample_values.push(values);
+
+        // Compute constraint value at this point
+        let extended_eval_domain = EvaluationDomain::new_linear(proof.field, extended_trace_size);
+        let point = extended_eval_domain.element(sample_point);
+        let constraint_value = proof.constraint_poly.evaluate(point);
+        constraint_values.push(constraint_value);
+    }
+
+    // Update proof with sample data
+    proof.sampling_data.sample_points = sample_points;
+    proof.sampling_data.sample_values = sample_values;
+    proof.sampling_data.constraint_values = constraint_values;
+    proof.sampling_data.merkle_proofs = merkle_proofs;
+
+    // Verify the proof
     let is_valid = verify_proof(&proof);
 
     println!("\n🎯 STARK Proof Result:");
