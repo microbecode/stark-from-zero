@@ -1,7 +1,8 @@
 use stark_from_zero::{
     finite_field::{FiniteField, FiniteFieldElement},
-    prover::{prove_fibonacci, verify_constraint_polynomial, verify_fibonacci_constraints},
-    trace::{fibonacci, Trace},
+    prover::prove_fibonacci,
+    trace::fibonacci,
+    verifier::verify_proof,
 };
 
 fn main() {
@@ -28,26 +29,14 @@ fn main() {
     let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
     let proof = prove_fibonacci(trace, field);
 
-    // Verify the proof using both methods
-    println!("\n🔍 Verification Methods:");
-
-    // Method 1: Step-by-step verification
-    let step_by_step_valid = verify_fibonacci_constraints(&proof);
-
-    // Method 2: Polynomial constraint verification
-    let polynomial_valid = verify_constraint_polynomial(&proof);
+    // Verify the proof using the verifier
+    println!("\n🔍 STARK Verification:");
+    let is_valid = verify_proof(&proof);
 
     println!("\n🎯 STARK Proof Result:");
-    if step_by_step_valid && polynomial_valid {
+    if is_valid {
         println!("   ✅ Proof is VALID - Fibonacci computation is correct!");
-        println!("   ✅ Both verification methods passed!");
     } else {
         println!("   ❌ Proof is INVALID - Computation has errors!");
-        if !step_by_step_valid {
-            println!("   ❌ Step-by-step verification failed!");
-        }
-        if !polynomial_valid {
-            println!("   ❌ Polynomial constraint verification failed!");
-        }
     }
 }

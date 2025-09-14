@@ -5,3 +5,4 @@ pub mod merkle_tree;
 pub mod polynomial;
 pub mod prover;
 pub mod trace;
+pub mod verifier;
