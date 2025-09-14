@@ -18,6 +18,10 @@ pub struct StarkProof {
     /// Constraint residuals on original trace: r[n] = F(n) - F(n-1) - F(n-2).
     /// This is only for debugging purposes.
     pub residuals: Vec<i128>,
+    /// Constraint polynomial: C(x) = F(x) - F(x-1) - F(x-2)
+    pub constraint_poly: Polynomial,
+    /// Evaluation domain for the extended trace
+    pub eval_domain: EvaluationDomain,
 }
 
 /// Low Degree Extension: Interpolate trace columns and evaluate at larger domain
@@ -93,6 +97,63 @@ fn compute_fibonacci_residuals(trace: &Trace) -> Vec<i128> {
     residuals
 }
 
+/// Create constraint polynomial: C(x) = F(x) - F(x-1) - F(x-2)
+/// This polynomial should evaluate to 0 at all valid computation steps
+fn create_fibonacci_constraint_poly(
+    trace: &Trace,
+    field: FiniteField,
+) -> (Polynomial, EvaluationDomain) {
+    println!("🔧 Creating Fibonacci constraint polynomial...");
+
+    let original_size = trace.num_rows();
+    let eval_domain = EvaluationDomain::new_linear(field, original_size);
+
+    // Create polynomials for each column: F(x-2), F(x-1), F(x)
+    let mut column_polys = Vec::new();
+
+    for col in 0..trace.num_columns() {
+        let column_values = trace.get_column(col);
+        let mut points = Vec::new();
+        for (step, &value) in column_values.iter().enumerate() {
+            points.push((step as i128, value));
+        }
+        let poly = lagrange_interpolation(&points);
+        column_polys.push(poly);
+    }
+
+    // C(x) = F(x) - F(x-1) - F(x-2)
+    // For this simplified version, we'll create a constraint polynomial
+    // that evaluates to 0 at all points where the Fibonacci rule should hold
+
+    // Create a polynomial that represents the constraint residuals
+    let mut constraint_points = Vec::new();
+
+    // For steps 0 and 1, the constraint is trivially satisfied (no previous terms)
+    constraint_points.push((0, 0));
+    if original_size > 1 {
+        constraint_points.push((1, 0));
+    }
+
+    // For steps 2 and beyond, compute the actual constraint residual
+    for step in 2..original_size {
+        let f_n_minus_2 = trace.get(step, 0).unwrap();
+        let f_n_minus_1 = trace.get(step, 1).unwrap();
+        let f_n = trace.get(step, 2).unwrap();
+        let residual = f_n - (f_n_minus_1 + f_n_minus_2);
+        constraint_points.push((step as i128, residual));
+    }
+
+    // Interpolate the constraint residuals to get the constraint polynomial
+    let constraint_poly = lagrange_interpolation(&constraint_points);
+
+    println!(
+        "   ✅ Constraint polynomial created (degree: {})",
+        constraint_poly.degree()
+    );
+
+    (constraint_poly, eval_domain)
+}
+
 /// Step 2: Prover with Low Degree Extension
 pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     println!("🔍 Starting STARK proof generation...");
@@ -130,12 +191,17 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
         non_zero
     );
 
+    // Create constraint polynomial
+    let (constraint_poly, eval_domain) = create_fibonacci_constraint_poly(&trace, field);
+
     StarkProof {
         trace_commitment: commitment,
         trace,
         field,
         extended_trace,
         residuals,
+        constraint_poly,
+        eval_domain,
     }
 }
 
@@ -178,6 +244,40 @@ pub fn verify_fibonacci_constraints(proof: &StarkProof) -> bool {
         println!("   ✅ All Fibonacci constraints verified!");
     } else {
         println!("   ❌ Some constraints failed!");
+    }
+
+    valid
+}
+
+/// Verify constraint polynomial: check that C(x) = 0 at all original trace points
+/// In reality, we should not use this method because it is not efficient.
+pub fn verify_constraint_polynomial(proof: &StarkProof) -> bool {
+    println!("🔧 Verifying constraint polynomial...");
+
+    let constraint_poly = &proof.constraint_poly;
+    let eval_domain = &proof.eval_domain;
+    let mut valid = true;
+
+    // Check constraint polynomial at all original trace points
+    for i in 0..proof.trace.num_rows() {
+        let point = eval_domain.element(i);
+        let constraint_value = constraint_poly.evaluate(point);
+
+        if constraint_value.value != 0 {
+            println!(
+                "   ❌ Constraint polynomial non-zero at step {}: {}",
+                i, constraint_value.value
+            );
+            valid = false;
+        } else {
+            println!("   ✅ Step {}: C({}) = 0", i, i);
+        }
+    }
+
+    if valid {
+        println!("   ✅ Constraint polynomial verified - all evaluations are zero!");
+    } else {
+        println!("   ❌ Constraint polynomial verification failed!");
     }
 
     valid
