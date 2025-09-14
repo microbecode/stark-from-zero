@@ -15,6 +15,9 @@ pub struct StarkProof {
     pub field: FiniteField,
     /// The extended trace (LDE)
     pub extended_trace: Vec<Vec<FiniteFieldElement>>,
+    /// Constraint residuals on original trace: r[n] = F(n) - F(n-1) - F(n-2).
+    /// This is only for debugging purposes.
+    pub residuals: Vec<i128>,
 }
 
 /// Low Degree Extension: Interpolate trace columns and evaluate at larger domain
@@ -70,6 +73,26 @@ fn extend_trace(
     extended_trace
 }
 
+/// Compute residuals r[n] = F(n) - F(n-1) - F(n-2) over original trace
+fn compute_fibonacci_residuals(trace: &Trace) -> Vec<i128> {
+    let mut residuals = Vec::with_capacity(trace.num_rows());
+    if trace.num_rows() == 0 {
+        return residuals;
+    }
+    // For first two rows, define residual as 0 (no previous terms)
+    residuals.push(0);
+    if trace.num_rows() > 1 {
+        residuals.push(0);
+    }
+    for step in 2..trace.num_rows() {
+        let f_n_minus_2 = trace.get(step, 0).unwrap();
+        let f_n_minus_1 = trace.get(step, 1).unwrap();
+        let f_n = trace.get(step, 2).unwrap();
+        residuals.push(f_n - (f_n_minus_1 + f_n_minus_2));
+    }
+    residuals
+}
+
 /// Step 2: Prover with Low Degree Extension
 pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     println!("🔍 Starting STARK proof generation...");
@@ -98,11 +121,21 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     let commitment = tree.root().unwrap();
     println!("   ✅ Extended trace committed: {}", commitment);
 
+    // Compute simple residuals on the original (non-extended) trace
+    let residuals = compute_fibonacci_residuals(&trace);
+    let non_zero: usize = residuals.iter().filter(|v| **v != 0).count();
+    println!(
+        "   Constraint residuals: {} zeros, {} non-zeros",
+        residuals.len() - non_zero,
+        non_zero
+    );
+
     StarkProof {
         trace_commitment: commitment,
         trace,
         field,
         extended_trace,
+        residuals,
     }
 }
 
