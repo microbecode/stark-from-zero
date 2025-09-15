@@ -1,4 +1,5 @@
 pub mod evaluation_domain;
+pub mod fiat_shamir;
 pub mod finite_field;
 pub mod fri;
 pub mod hashing;
