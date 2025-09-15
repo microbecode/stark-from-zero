@@ -1,6 +1,7 @@
 use crate::evaluation_domain::EvaluationDomain;
 use crate::finite_field::FiniteFieldElement;
 use crate::polynomial::polynomial::Polynomial;
+use crate::{fiat_shamir::Transcript, finite_field::FiniteField};
 
 /// Random sampling data for verification
 pub struct SamplingData {
@@ -192,6 +193,47 @@ pub fn generate_sample_points(extended_trace_size: usize, num_samples: usize) ->
 
     println!("   ✅ Generated {} random sample points", num_samples);
     sample_points
+}
+
+/// Derive sample points using Fiat–Shamir from the commitment and leaf count
+pub fn derive_sample_points_from_commitment(
+    commitment: i128,
+    leaf_count: usize,
+    num_samples: usize,
+) -> Vec<usize> {
+    println!("🎲 Deriving sample points via Fiat–Shamir...");
+    let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+    let mut t = Transcript::new();
+    t.absorb_i128(commitment);
+    t.absorb_i128(leaf_count as i128);
+
+    let mut points = Vec::with_capacity(num_samples);
+    for _ in 0..num_samples {
+        let c = t.challenge(field);
+        let idx = ((c.value % (leaf_count as i128)) + (leaf_count as i128)) % (leaf_count as i128);
+        points.push(idx as usize);
+    }
+    println!("   ✅ Derived {} sample points", num_samples);
+    points
+}
+
+/// Derive FRI betas using Fiat–Shamir from the commitment
+pub fn derive_fri_betas_from_commitment(
+    commitment: i128,
+    num_rounds: usize,
+) -> Vec<FiniteFieldElement> {
+    println!("🧪 Deriving FRI betas via Fiat–Shamir...");
+    let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+    let mut t = Transcript::new();
+    t.absorb_i128(commitment);
+
+    let mut betas = Vec::with_capacity(num_rounds);
+    for _ in 0..num_rounds {
+        let beta = t.challenge(field);
+        betas.push(beta);
+    }
+    println!("   ✅ Derived {} betas", num_rounds);
+    betas
 }
 
 /// Verify the entire STARK proof

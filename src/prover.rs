@@ -5,7 +5,7 @@ use crate::merkle_tree::MerkleTree;
 use crate::polynomial::interpolate::lagrange_interpolation;
 use crate::polynomial::polynomial::Polynomial;
 use crate::trace::Trace;
-use crate::verifier::{SamplingData, StarkProof};
+use crate::verifier::{derive_fri_betas_from_commitment, SamplingData, StarkProof};
 
 /// Low Degree Extension: Interpolate trace columns and evaluate at larger domain
 pub fn extend_trace(
@@ -155,7 +155,8 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     fri_layers.push(leaves.clone());
 
     // Educational fixed betas (in practice via Fiat–Shamir)
-    let fri_betas = vec![FiniteFieldElement::new(3), FiniteFieldElement::new(5)];
+    // Derive FRI betas via Fiat–Shamir from the Merkle root
+    let fri_betas = derive_fri_betas_from_commitment(commitment, 2);
     let mut cur = leaves;
     for &beta in &fri_betas {
         cur = fold_once(&cur, beta);

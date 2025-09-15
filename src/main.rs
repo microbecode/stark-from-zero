@@ -3,7 +3,7 @@ use stark_from_zero::{
     finite_field::{FiniteField, FiniteFieldElement},
     prover::{extend_trace, generate_merkle_proofs, prove_fibonacci},
     trace::fibonacci,
-    verifier::{generate_sample_points, verify_proof},
+    verifier::{derive_sample_points_from_commitment, verify_proof},
 };
 
 fn main() {
@@ -30,10 +30,11 @@ fn main() {
     let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
     let mut proof = prove_fibonacci(trace, field);
 
-    // Verifier generates sample points
+    // Verifier generates sample points via Fiat–Shamir
     println!("\n🔍 STARK Verification:");
     let extended_trace_size = 32; // 8 * 4 extension factor
-    let sample_points = generate_sample_points(extended_trace_size, 5);
+    let leaf_count = extended_trace_size; // matches Merkle leaves for this setup
+    let sample_points = derive_sample_points_from_commitment(proof.trace_commitment, leaf_count, 5);
 
     // Prover generates Merkle proofs for the sample points
     let extended_trace = extend_trace(&proof.trace, proof.field, 4);
