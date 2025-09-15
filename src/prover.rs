@@ -222,7 +222,39 @@ mod tests {
         let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
 
         // Generate proof
-        let proof = prove_fibonacci(trace, field);
+        let mut proof = prove_fibonacci(trace, field);
+
+        // Set up sampling data like in main
+        let extension_factor = 4usize;
+        let extended_trace = super::extend_trace(&proof.trace, proof.field, extension_factor);
+        let extended_trace_size = proof.trace.num_rows() * extension_factor;
+
+        let sample_points = crate::verifier::generate_sample_points(extended_trace_size, 5);
+        let merkle_proofs = super::generate_merkle_proofs(&extended_trace, &sample_points);
+
+        // Collect sample values and compute constraint values at those points
+        let mut sample_values = Vec::new();
+        let mut constraint_values = Vec::new();
+        for &sample_point in &sample_points {
+            let mut values_at_point = Vec::new();
+            for col in 0..extended_trace.len() {
+                values_at_point.push(extended_trace[col][sample_point]);
+            }
+            sample_values.push(values_at_point);
+
+            let extended_eval_domain = crate::evaluation_domain::EvaluationDomain::new_linear(
+                proof.field,
+                extended_trace_size,
+            );
+            let x = extended_eval_domain.element(sample_point);
+            let c_val = proof.constraint_poly.evaluate(x);
+            constraint_values.push(c_val);
+        }
+
+        proof.sampling_data.sample_points = sample_points;
+        proof.sampling_data.sample_values = sample_values;
+        proof.sampling_data.constraint_values = constraint_values;
+        proof.sampling_data.merkle_proofs = merkle_proofs;
 
         // Verify proof using verifier
         let is_valid = verify_proof(&proof);
