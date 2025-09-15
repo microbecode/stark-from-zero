@@ -26,6 +26,8 @@ pub struct MerkleTree {
     root: Option<i128>,
     /// Nodes of the Merkle tree. Index 0 is leaves
     nodes: Vec<Vec<i128>>,
+    /// Padded leaves as field elements (matches leaf hash layer length)
+    padded_leaves: Vec<FiniteFieldElement>,
 }
 
 impl MerkleTree {
@@ -33,6 +35,7 @@ impl MerkleTree {
         MerkleTree {
             root: None,
             nodes: Vec::new(),
+            padded_leaves: Vec::new(),
         }
     }
 
@@ -40,16 +43,25 @@ impl MerkleTree {
         if elements.is_empty() {
             self.root = None;
             self.nodes = vec![vec![]];
+            self.padded_leaves.clear();
             return;
         }
 
+        // Start with hashes of provided elements
         let mut hashes: Vec<i128> = elements.iter().map(|e| e.hash()).collect();
 
-        // Pad to next power of 2
+        // Pad hash layer to next power of 2 with literal zero hash values
         let target_size = next_power_of_two(hashes.len());
         while hashes.len() < target_size {
-            hashes.push(0); // Use 0 as padding value
+            hashes.push(0);
         }
+
+        // Store padded leaves as field elements of equal length (zeros for padding)
+        let mut padded = elements.to_vec();
+        while padded.len() < target_size {
+            padded.push(FiniteFieldElement::new(0));
+        }
+        self.padded_leaves = padded;
 
         let mut nodes = Vec::new();
         nodes.push(hashes.clone());
@@ -78,6 +90,11 @@ impl MerkleTree {
         } else {
             self.nodes[0].len()
         }
+    }
+
+    /// Access the padded leaves used when building the tree
+    pub fn padded_leaves(&self) -> &[FiniteFieldElement] {
+        &self.padded_leaves
     }
 
     pub fn get_merkle_proof(&self, index: usize) -> Option<Vec<i128>> {

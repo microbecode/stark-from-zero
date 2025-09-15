@@ -150,8 +150,7 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
 
     // FRI: use the exact Merkle leaves (already padded by MerkleTree::build)
     let mut fri_layers: Vec<Vec<FiniteFieldElement>> = Vec::new();
-    let leaf_count = tree.leaf_count();
-    let leaves: Vec<FiniteFieldElement> = flat_extended_trace[0..leaf_count].to_vec();
+    let leaves: Vec<FiniteFieldElement> = tree.padded_leaves().to_vec();
     fri_layers.push(leaves.clone());
 
     // Educational fixed betas (in practice via Fiat–Shamir)
