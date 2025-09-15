@@ -28,6 +28,10 @@ pub struct StarkProof {
     pub eval_domain: EvaluationDomain,
     /// Random sampling points and values
     pub sampling_data: SamplingData,
+    /// FRI folding layers over the same leaves as Merkle (padded to power-of-two)
+    pub fri_layers: Vec<Vec<FiniteFieldElement>>,
+    /// Folding betas used per round (educational, fixed for now)
+    pub fri_betas: Vec<FiniteFieldElement>,
 }
 
 /// Verify random sampling: check that constraint polynomial is zero at sample points

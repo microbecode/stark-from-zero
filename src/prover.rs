@@ -1,5 +1,6 @@
 use crate::evaluation_domain::EvaluationDomain;
 use crate::finite_field::{FiniteField, FiniteFieldElement};
+use crate::fri::fold_once;
 use crate::merkle_tree::MerkleTree;
 use crate::polynomial::interpolate::lagrange_interpolation;
 use crate::polynomial::polynomial::Polynomial;
@@ -147,6 +148,23 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     // Create constraint polynomial
     let (constraint_poly, eval_domain) = create_fibonacci_constraint_poly(&trace, field);
 
+    // FRI: use the exact Merkle leaves (already padded by MerkleTree::build)
+    let mut fri_layers: Vec<Vec<FiniteFieldElement>> = Vec::new();
+    let leaf_count = tree.leaf_count();
+    let leaves: Vec<FiniteFieldElement> = flat_extended_trace[0..leaf_count].to_vec();
+    fri_layers.push(leaves.clone());
+
+    // Educational fixed betas (in practice via Fiat–Shamir)
+    let fri_betas = vec![FiniteFieldElement::new(3), FiniteFieldElement::new(5)];
+    let mut cur = leaves;
+    for &beta in &fri_betas {
+        cur = fold_once(&cur, beta);
+        fri_layers.push(cur.clone());
+        if cur.len() <= 1 {
+            break;
+        }
+    }
+
     // Create empty sampling data (will be filled by verifier)
     let sampling_data = SamplingData {
         sample_points: Vec::new(),
@@ -162,6 +180,8 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
         constraint_poly,
         eval_domain,
         sampling_data,
+        fri_layers,
+        fri_betas,
     }
 }
 

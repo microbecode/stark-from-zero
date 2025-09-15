@@ -71,6 +71,15 @@ impl MerkleTree {
         self.root
     }
 
+    /// Number of leaf nodes after internal padding to the next power of two
+    pub fn leaf_count(&self) -> usize {
+        if self.nodes.is_empty() {
+            0
+        } else {
+            self.nodes[0].len()
+        }
+    }
+
     pub fn get_merkle_proof(&self, index: usize) -> Option<Vec<i128>> {
         if index >= self.nodes[0].len() {
             return None;
