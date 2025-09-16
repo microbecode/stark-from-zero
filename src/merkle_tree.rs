@@ -47,21 +47,31 @@ impl MerkleTree {
             return;
         }
 
-        // Start with hashes of provided elements
-        let mut hashes: Vec<i128> = elements.iter().map(|e| e.hash()).collect();
+        // Hash the elements and call build_from_hashes
+        let hashes: Vec<i128> = elements.iter().map(|e| e.hash()).collect();
+        self.build_from_hashes(&hashes);
+    }
 
-        // Pad hash layer to next power of 2 with literal zero hash values
+    /// Build a tree directly from precomputed leaf hashes (i128).
+    /// Pads with zero hashes to the next power of two.
+    pub fn build_from_hashes(&mut self, leaf_hashes: &[i128]) {
+        if leaf_hashes.is_empty() {
+            self.root = None;
+            self.nodes = vec![vec![]];
+            self.padded_leaves.clear();
+            return;
+        }
+
+        let mut hashes: Vec<i128> = leaf_hashes.to_vec();
         let target_size = next_power_of_two(hashes.len());
         while hashes.len() < target_size {
             hashes.push(0);
         }
 
-        // Store padded leaves as field elements of equal length (zeros for padding)
-        let mut padded = elements.to_vec();
-        while padded.len() < target_size {
-            padded.push(FiniteFieldElement::new(0));
-        }
-        self.padded_leaves = padded;
+        // For compatibility, expose padded leaves as zeros of same length
+        self.padded_leaves = (0..target_size)
+            .map(|_| FiniteFieldElement::new(0))
+            .collect();
 
         let mut nodes = Vec::new();
         nodes.push(hashes.clone());

@@ -130,17 +130,24 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     let extension_factor = 4; // Extend 8 steps to 32 steps
     let extended_trace = extend_trace(&trace, field, extension_factor);
 
-    // Step 2: Commit to the EXTENDED trace (not the original)
-    let mut flat_extended_trace = Vec::new();
-    for row in &extended_trace {
-        for element in row {
-            flat_extended_trace.push(*element);
+    // Step 2: Commit to the EXTENDED trace (row-leaf hashing)
+    // Build leaves per row by hashing all column values together
+    let extended_size = extended_trace[0].len();
+    let num_cols = extended_trace.len();
+    let mut row_leaf_hashes: Vec<i128> = Vec::with_capacity(extended_size);
+    for i in 0..extended_size {
+        let mut acc: i128 = 0;
+        for c in 0..num_cols {
+            let h = extended_trace[c][i].hash();
+            acc = crate::merkle_tree::hash_two_inputs(acc, h);
         }
+        // Use the accumulated hash directly as the leaf hash (no field reduction, no extra hash)
+        row_leaf_hashes.push(acc);
     }
 
-    // Build Merkle tree on extended trace
+    // Build Merkle tree on row leaf hashes (pad internally)
     let mut tree = MerkleTree::new();
-    tree.build(&flat_extended_trace);
+    tree.build_from_hashes(&row_leaf_hashes);
 
     let commitment = tree.root().unwrap();
     println!("   ✅ Extended trace committed: {}", commitment);
@@ -148,15 +155,23 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     // Create constraint polynomial
     let (constraint_poly, eval_domain) = create_fibonacci_constraint_poly(&trace, field);
 
-    // FRI: use the exact Merkle leaves (already padded by MerkleTree::build)
+    // FRI: fold evaluations (not hashes). Pad evaluations to Merkle leaf_count
     let mut fri_layers: Vec<Vec<FiniteFieldElement>> = Vec::new();
-    let leaves: Vec<FiniteFieldElement> = tree.padded_leaves().to_vec();
-    fri_layers.push(leaves.clone());
+    let leaf_count = tree.leaf_count();
+    let mut eval_leaves: Vec<FiniteFieldElement> = Vec::new();
+    // Use a single combined evaluation per row: take, for simplicity, the last column F(n)
+    for i in 0..extended_size {
+        eval_leaves.push(extended_trace[num_cols - 1][i]);
+    }
+    if eval_leaves.len() < leaf_count {
+        eval_leaves.resize(leaf_count, FiniteFieldElement::ZERO);
+    }
+    fri_layers.push(eval_leaves.clone());
 
     // Educational fixed betas (in practice via Fiat–Shamir)
     // Derive FRI betas via Fiat–Shamir from the Merkle root
     let fri_betas = derive_fri_betas_from_commitment(commitment, 2);
-    let mut cur = leaves;
+    let mut cur = eval_leaves;
     for &beta in &fri_betas {
         cur = fold_once(&cur, beta);
         fri_layers.push(cur.clone());
@@ -182,12 +197,13 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
         sampling_data,
         fri_layers,
         fri_betas,
+        merkle_tree: tree, // Store the tree for consistent proof generation
     }
 }
 
-/// Generate Merkle proofs for sample points (prover's job)
-pub fn generate_merkle_proofs(
-    extended_trace: &[Vec<FiniteFieldElement>],
+/// Generate Merkle proofs for sample points using an existing tree
+pub fn generate_merkle_proofs_from_tree(
+    tree: &MerkleTree,
     sample_points: &[usize],
 ) -> Vec<Vec<i128>> {
     println!(
@@ -195,19 +211,7 @@ pub fn generate_merkle_proofs(
         sample_points.len()
     );
 
-    // Flatten the extended trace for Merkle tree
-    let mut flat_extended_trace = Vec::new();
-    for row in extended_trace {
-        for element in row {
-            flat_extended_trace.push(*element);
-        }
-    }
-
-    // Build Merkle tree
-    let mut tree = MerkleTree::new();
-    tree.build(&flat_extended_trace);
-
-    // Generate proofs for each sample point
+    // Generate proofs for each sample point using the existing tree
     let mut merkle_proofs = Vec::new();
     for &sample_point in sample_points {
         if let Some(proof) = tree.get_merkle_proof(sample_point) {
@@ -250,7 +254,9 @@ mod tests {
         let extended_trace_size = proof.trace.num_rows() * extension_factor;
 
         let sample_points = crate::verifier::generate_sample_points(extended_trace_size, 5);
-        let merkle_proofs = super::generate_merkle_proofs(&extended_trace, &sample_points);
+        // Generate Merkle proofs using the same tree from proof generation
+        let merkle_proofs =
+            super::generate_merkle_proofs_from_tree(&proof.merkle_tree, &sample_points);
 
         // Collect sample values and compute constraint values at those points
         let mut sample_values = Vec::new();

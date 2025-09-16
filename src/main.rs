@@ -1,7 +1,7 @@
 use stark_from_zero::{
     evaluation_domain::EvaluationDomain,
     finite_field::{FiniteField, FiniteFieldElement},
-    prover::{extend_trace, generate_merkle_proofs, prove_fibonacci},
+    prover::{extend_trace, prove_fibonacci},
     trace::fibonacci,
     verifier::{derive_sample_points_from_commitment, verify_proof},
 };
@@ -36,14 +36,22 @@ fn main() {
     let leaf_count = extended_trace_size; // matches Merkle leaves for this setup
     let sample_points = derive_sample_points_from_commitment(proof.trace_commitment, leaf_count, 5);
 
-    // Prover generates Merkle proofs for the sample points
-    let extended_trace = extend_trace(&proof.trace, proof.field, 4);
-    let merkle_proofs = generate_merkle_proofs(&extended_trace, &sample_points);
+    // Prover generates Merkle proofs for the sample points using the same tree
+    let mut merkle_proofs = Vec::new();
+    for &sample_point in &sample_points {
+        if let Some(proof) = proof.merkle_tree.get_merkle_proof(sample_point) {
+            merkle_proofs.push(proof);
+        } else {
+            merkle_proofs.push(Vec::new());
+        }
+    }
 
     // Prover provides sample values and Merkle proofs
     let mut sample_values = Vec::new();
     let mut constraint_values = Vec::new();
 
+    // Get sample values from the extended trace
+    let extended_trace = extend_trace(&proof.trace, proof.field, 4);
     for &sample_point in &sample_points {
         let mut values = Vec::new();
         for col in 0..extended_trace.len() {

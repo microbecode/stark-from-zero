@@ -33,6 +33,8 @@ pub struct StarkProof {
     pub fri_layers: Vec<Vec<FiniteFieldElement>>,
     /// Folding betas used per round (educational, fixed for now)
     pub fri_betas: Vec<FiniteFieldElement>,
+    /// Merkle tree used for proof generation (for consistent proofs)
+    pub merkle_tree: crate::merkle_tree::MerkleTree,
 }
 
 /// Verify random sampling: check that constraint polynomial is zero at sample points
@@ -138,8 +140,14 @@ pub fn verify_merkle_proofs(proof: &StarkProof) -> bool {
             continue;
         }
 
-        // Verify the Merkle proof
-        let leaf_hash = sample_values[0].hash(); // Use first column as leaf hash
+        // Compute row-leaf hash from all column values (must match prover logic)
+        let mut acc: i128 = 0;
+        for v in sample_values.iter() {
+            let h = v.hash();
+            acc = crate::merkle_tree::hash_two_inputs(acc, h);
+        }
+        // Tree was built from leaf hashes = accumulated_row_hash directly (no extra hash)
+        let leaf_hash = acc;
         let mut current_hash = leaf_hash;
 
         // Reconstruct root by following the proof path
@@ -161,6 +169,15 @@ pub fn verify_merkle_proofs(proof: &StarkProof) -> bool {
             println!(
                 "   ❌ Sample {} (point {}): Merkle proof failed",
                 i, sample_point
+            );
+            println!(
+                "      Expected root: {}, Got: {}",
+                proof.trace_commitment, current_hash
+            );
+            println!(
+                "      Leaf hash: {}, Values: {:?}",
+                leaf_hash,
+                sample_values.iter().map(|v| v.value).collect::<Vec<_>>()
             );
             valid = false;
         }
