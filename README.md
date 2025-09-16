@@ -1,4 +1,4 @@
-# stark-from-zero
+# Stark from zero
 
 Create a Stark prover and verifier from zero, with Rust. Everything is implemented by hand - no external libraries are used.
 
