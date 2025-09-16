@@ -44,7 +44,6 @@ fn main() {
 
     // Prover provides sample values and Merkle proofs
     let mut sample_values = Vec::new();
-    let mut constraint_values = Vec::new();
 
     // Get sample values from the extended trace
     for &sample_point in &sample_points {
@@ -53,18 +52,12 @@ fn main() {
             values.push(extended_trace[col][sample_point]);
         }
         sample_values.push(values);
-
-        // Compute constraint value at this point
-        let extended_eval_domain = EvaluationDomain::new_linear(proof.field, extended_trace_size);
-        let point = extended_eval_domain.element(sample_point);
-        let constraint_value = proof.constraint_poly.evaluate(point);
-        constraint_values.push(constraint_value);
     }
 
     // Update proof with sample data
     proof.sampling_data.sample_points = sample_points;
     proof.sampling_data.sample_values = sample_values;
-    proof.sampling_data.constraint_values = constraint_values;
+    proof.sampling_data.constraint_values = Vec::new(); // Verifier will derive these
     proof.sampling_data.merkle_proofs = merkle_proofs;
 
     // Verify the proof

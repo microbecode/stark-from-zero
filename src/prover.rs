@@ -152,8 +152,8 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     let commitment = tree.root().unwrap();
     println!("   ✅ Extended trace committed: {}", commitment);
 
-    // Create constraint polynomial
-    let (constraint_poly, eval_domain) = create_fibonacci_constraint_poly(&trace, field);
+    // Create evaluation domain for the original trace
+    let eval_domain = EvaluationDomain::new_linear(field, trace.num_rows());
 
     // FRI: fold evaluations (not hashes). Pad evaluations to Merkle leaf_count
     let mut fri_layers: Vec<Vec<FiniteFieldElement>> = Vec::new();
@@ -192,7 +192,6 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
         trace_commitment: commitment,
         trace_size: trace.num_rows(),
         field,
-        constraint_poly,
         eval_domain,
         sampling_data,
         fri_layers,
@@ -272,28 +271,19 @@ mod tests {
         // Generate Merkle proofs by rebuilding the same tree (for testing only)
         let merkle_proofs = super::generate_merkle_proofs(&extended_trace, &sample_points);
 
-        // Collect sample values and compute constraint values at those points
+        // Collect sample values (constraint values will be derived by verifier)
         let mut sample_values = Vec::new();
-        let mut constraint_values = Vec::new();
         for &sample_point in &sample_points {
             let mut values_at_point = Vec::new();
             for col in 0..extended_trace.len() {
                 values_at_point.push(extended_trace[col][sample_point]);
             }
             sample_values.push(values_at_point);
-
-            let extended_eval_domain = crate::evaluation_domain::EvaluationDomain::new_linear(
-                proof.field,
-                extended_trace_size,
-            );
-            let x = extended_eval_domain.element(sample_point);
-            let c_val = proof.constraint_poly.evaluate(x);
-            constraint_values.push(c_val);
         }
 
         proof.sampling_data.sample_points = sample_points;
         proof.sampling_data.sample_values = sample_values;
-        proof.sampling_data.constraint_values = constraint_values;
+        proof.sampling_data.constraint_values = Vec::new(); // Verifier will derive these
         proof.sampling_data.merkle_proofs = merkle_proofs;
 
         // Verify proof using verifier
