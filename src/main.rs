@@ -26,7 +26,7 @@ fn main() {
         );
     }
 
-    // Generate STARK proof (without sample data)
+    // Generate STARK proof
     let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
     let mut proof = prove_fibonacci(trace.clone(), field);
 

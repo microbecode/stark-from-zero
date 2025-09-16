@@ -1,18 +1,29 @@
 # Stark from zero
 
-Create a Stark prover and verifier from zero, with Rust. Everything is implemented by hand - no external libraries are used.
+Create a [Stark](https://starkware.co/stark/) prover and verifier from zero, with Rust. Everything is implemented by hand - no external libraries are utilized.
 
-The point is to create a minimal, educational version without strong security requirements or optimizations.
+The point is to create a minimal, educational version without strong security requirements or optimizations. This prover also does not offer the Zero Knowledge privacy property.
 
 ## What’s in here
 
 - A simple trace for Fibonacci (rows = steps, columns = state values)
 - Interpolation and Low Degree Extension (LDE) over a finite field
-- Merkle commitment to the extended trace (row-leaf hashing)
+- Merkle commitment to the extended trace
 - Fiat–Shamir transcript to derive verifier challenges (sample indices, FRI betas)
 - A composition polynomial that encodes the AIR rule
 - Random sampling over the extended domain to check constraints
 - Minimal FRI folding (educational; not a full FRI verifier)
+
+### What's NOT in here
+
+As mentioned above, this is an educational project. This should not be used in production.
+
+Some of the missing pieces include:
+- ZK privacy implementation. This implementation doesn't provide privacy.
+- Realistic sizes for data and variables: the used finite field is small, the extension field is small, the used trace is small, ...
+- Performance improvements
+- Security improvements (and fixing probable existing security issues)
+- Proper implementations for some of the used building blocks. For example the used hash function is far from secure
 
 ## Prover → Verifier flow (short)
 
@@ -28,7 +39,7 @@ The point is to create a minimal, educational version without strong security re
 
 ## Composition polynomial (Fibonacci)
 
-For Fibonacci, the AIR is f(n) = f(n−1) + f(n−2). We package this as one polynomial
+For Fibonacci, the AIR is f(n) = f(n−1) + f(n−2). This is packaged as one polynomial
 
     C(x) = f(x+2) − f(x+1) − f(x)
 
