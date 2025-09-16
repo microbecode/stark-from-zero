@@ -28,7 +28,7 @@ fn main() {
 
     // Generate STARK proof (without sample data)
     let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
-    let mut proof = prove_fibonacci(trace, field);
+    let mut proof = prove_fibonacci(trace.clone(), field);
 
     // Verifier generates sample points via Fiat–Shamir
     println!("\n🔍 STARK Verification:");
@@ -37,7 +37,9 @@ fn main() {
     let sample_points = derive_sample_points_from_commitment(proof.trace_commitment, leaf_count, 5);
 
     // Prover generates Merkle proofs for the sample points
-    let extended_trace = extend_trace(&proof.trace, proof.field, 4);
+    // Note: In a real STARK, the prover would have already computed this during proof generation
+    // For this educational example, we recompute it
+    let extended_trace = extend_trace(&trace, proof.field, 4);
     let merkle_proofs = generate_merkle_proofs(&extended_trace, &sample_points);
 
     // Prover provides sample values and Merkle proofs

@@ -19,8 +19,8 @@ pub struct SamplingData {
 pub struct StarkProof {
     /// Merkle root of the extended trace
     pub trace_commitment: i128,
-    /// The original trace
-    pub trace: crate::trace::Trace,
+    /// Original trace size (number of rows)
+    pub trace_size: usize,
     /// The field used
     pub field: crate::finite_field::FiniteField,
     /// Constraint polynomial: C(x) = F(x) - F(x-1) - F(x-2)
@@ -85,8 +85,7 @@ pub fn verify_random_sampling_with_points(proof: &StarkProof, sample_points: &[u
     for (i, &sample_point) in sample_points.iter().enumerate() {
         // Evaluate constraint polynomial at this point
         // Use the original trace size for constraint evaluation (not extended)
-        let extended_eval_domain =
-            EvaluationDomain::new_linear(proof.field, proof.trace.num_rows() * 4); // 4x extension
+        let extended_eval_domain = EvaluationDomain::new_linear(proof.field, proof.trace_size * 4); // 4x extension
         let point = extended_eval_domain.element(sample_point);
         let constraint_value = proof.constraint_poly.evaluate(point);
 

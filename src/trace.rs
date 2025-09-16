@@ -4,6 +4,7 @@ use core::panic;
 /// Trace represents computational steps in a STARK proof.
 /// First dimension is rows (time steps), second is columns (state variables).
 /// All rows must have the same number of columns.
+#[derive(Clone)]
 pub struct Trace {
     pub trace: Vec<Vec<i128>>,
     pub num_columns: usize,

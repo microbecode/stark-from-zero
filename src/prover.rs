@@ -190,7 +190,7 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
 
     StarkProof {
         trace_commitment: commitment,
-        trace,
+        trace_size: trace.num_rows(),
         field,
         constraint_poly,
         eval_domain,
@@ -261,12 +261,12 @@ mod tests {
         let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
 
         // Generate proof
-        let mut proof = prove_fibonacci(trace, field);
+        let mut proof = prove_fibonacci(trace.clone(), field);
 
         // Set up sampling data like in main
         let extension_factor = 4usize;
-        let extended_trace = super::extend_trace(&proof.trace, proof.field, extension_factor);
-        let extended_trace_size = proof.trace.num_rows() * extension_factor;
+        let extended_trace = super::extend_trace(&trace, proof.field, extension_factor);
+        let extended_trace_size = proof.trace_size * extension_factor;
 
         let sample_points = crate::verifier::generate_sample_points(extended_trace_size, 5);
         // Generate Merkle proofs by rebuilding the same tree (for testing only)
