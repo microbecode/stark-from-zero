@@ -33,8 +33,6 @@ pub struct StarkProof {
     pub fri_layers: Vec<Vec<FiniteFieldElement>>,
     /// Folding betas used per round (educational, fixed for now)
     pub fri_betas: Vec<FiniteFieldElement>,
-    /// Merkle tree used for proof generation (for consistent proofs)
-    pub merkle_tree: crate::merkle_tree::MerkleTree,
 }
 
 /// Verify random sampling: check that constraint polynomial is zero at sample points

@@ -197,13 +197,12 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
         sampling_data,
         fri_layers,
         fri_betas,
-        merkle_tree: tree, // Store the tree for consistent proof generation
     }
 }
 
-/// Generate Merkle proofs for sample points using an existing tree
-pub fn generate_merkle_proofs_from_tree(
-    tree: &MerkleTree,
+/// Generate Merkle proofs for sample points
+pub fn generate_merkle_proofs(
+    extended_trace: &[Vec<FiniteFieldElement>],
     sample_points: &[usize],
 ) -> Vec<Vec<i128>> {
     println!(
@@ -211,7 +210,23 @@ pub fn generate_merkle_proofs_from_tree(
         sample_points.len()
     );
 
-    // Generate proofs for each sample point using the existing tree
+    // Build the same row-leaf Merkle tree as in prove_fibonacci
+    let extended_size = extended_trace[0].len();
+    let num_cols = extended_trace.len();
+    let mut row_leaf_hashes: Vec<i128> = Vec::with_capacity(extended_size);
+    for i in 0..extended_size {
+        let mut acc: i128 = 0;
+        for c in 0..num_cols {
+            let h = extended_trace[c][i].hash();
+            acc = crate::merkle_tree::hash_two_inputs(acc, h);
+        }
+        row_leaf_hashes.push(acc);
+    }
+
+    let mut tree = MerkleTree::new();
+    tree.build_from_hashes(&row_leaf_hashes);
+
+    // Generate proofs for each sample point
     let mut merkle_proofs = Vec::new();
     for &sample_point in sample_points {
         if let Some(proof) = tree.get_merkle_proof(sample_point) {
@@ -254,9 +269,8 @@ mod tests {
         let extended_trace_size = proof.trace.num_rows() * extension_factor;
 
         let sample_points = crate::verifier::generate_sample_points(extended_trace_size, 5);
-        // Generate Merkle proofs using the same tree from proof generation
-        let merkle_proofs =
-            super::generate_merkle_proofs_from_tree(&proof.merkle_tree, &sample_points);
+        // Generate Merkle proofs by rebuilding the same tree (for testing only)
+        let merkle_proofs = super::generate_merkle_proofs(&extended_trace, &sample_points);
 
         // Collect sample values and compute constraint values at those points
         let mut sample_values = Vec::new();
