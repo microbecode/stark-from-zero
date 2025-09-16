@@ -1,5 +1,7 @@
 use crate::evaluation_domain::EvaluationDomain;
 use crate::finite_field::FiniteFieldElement;
+use crate::polynomial::interpolate::lagrange_interpolation;
+use crate::polynomial::polynomial::Polynomial;
 use crate::{fiat_shamir::Transcript, finite_field::FiniteField};
 
 /// Random sampling data for verification
@@ -30,33 +32,66 @@ pub struct StarkProof {
     pub fri_layers: Vec<Vec<FiniteFieldElement>>,
     /// Folding betas used per round (educational, fixed for now)
     pub fri_betas: Vec<FiniteFieldElement>,
+    /// Composition polynomial C(x) = f(x+2) - f(x+1) - f(x) over original domain
+    pub composition_poly: Polynomial,
 }
 
-/// Verify constraint directly from sample values (no polynomial interpolation needed)
+/// Verify constraints using composition polynomial provided by prover
 fn verify_fibonacci_constraints(
-    _sample_values: &[Vec<FiniteFieldElement>],
-    _sample_points: &[usize],
-    _trace_size: usize,
+    sample_points: &[usize],
+    trace_size: usize,
+    field: FiniteField,
+    composition_poly: &Polynomial,
 ) -> bool {
-    println!("🔧 Verifying Fibonacci constraints from sample values...");
+    println!("🔧 Verifying Fibonacci constraints using composition polynomial...");
 
-    // For educational purposes, skip constraint verification
-    // In a real STARK, this would properly verify constraints against the original trace
-    // Extended trace values don't follow Fibonacci relation due to interpolation
-    println!("   ⚠️  Educational mode: Skipping constraint verification (extended trace values don't follow Fibonacci relation due to interpolation)");
+    let mut valid = true;
+    let mut checked_count = 0;
 
-    true
+    // Check composition polynomial at all sampled points
+    for (i, &sample_point) in sample_points.iter().enumerate() {
+        // Evaluate composition polynomial at this point
+        let extended_eval_domain = EvaluationDomain::new_linear(field, trace_size * 4);
+        let point = extended_eval_domain.element(sample_point);
+        let constraint_value = composition_poly.evaluate(point);
+
+        if constraint_value.value != 0 {
+            println!(
+                "   ❌ Sample {} (point {}): C({}) = {} (should be 0)",
+                i, sample_point, sample_point, constraint_value.value
+            );
+            valid = false;
+        } else {
+            println!(
+                "   ✅ Sample {} (point {}): C({}) = 0",
+                i, sample_point, sample_point
+            );
+        }
+        checked_count += 1;
+    }
+
+    if valid {
+        println!(
+            "   ✅ All Fibonacci constraints verified! (checked {} points)",
+            checked_count
+        );
+    } else {
+        println!("   ❌ Some Fibonacci constraints failed verification!");
+    }
+
+    valid
 }
 
 /// Verify random sampling: check that constraint polynomial is zero at sample points
 pub fn verify_random_sampling(proof: &StarkProof) -> bool {
     println!("🎲 Verifying random sampling...");
 
-    // Verify constraints directly from sample values
+    // Verify constraints using composition polynomial
     verify_fibonacci_constraints(
-        &proof.sampling_data.sample_values,
         &proof.sampling_data.sample_points,
         proof.trace_size,
+        proof.field,
+        &proof.composition_poly,
     )
 }
 

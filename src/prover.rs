@@ -155,6 +155,9 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     // Create evaluation domain for the original trace
     let eval_domain = EvaluationDomain::new_linear(field, trace.num_rows());
 
+    // Create genuine composition polynomial over original domain from the original trace
+    let (composition_poly, _orig_domain_unused) = create_fibonacci_constraint_poly(&trace, field);
+
     // FRI: fold evaluations (not hashes). Pad evaluations to Merkle leaf_count
     let mut fri_layers: Vec<Vec<FiniteFieldElement>> = Vec::new();
     let leaf_count = tree.leaf_count();
@@ -196,6 +199,7 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
         sampling_data,
         fri_layers,
         fri_betas,
+        composition_poly,
     }
 }
 
