@@ -102,7 +102,7 @@ fn create_fibonacci_constraint_poly(
         let f_n_minus_2 = trace.get(step, 0).unwrap();
         let f_n_minus_1 = trace.get(step, 1).unwrap();
         let f_n = trace.get(step, 2).unwrap();
-        let residual = f_n - (f_n_minus_1 + f_n_minus_2);
+        let residual = f_n - f_n_minus_1 - f_n_minus_2;
         constraint_points.push((step as i128, residual));
     }
 
@@ -141,7 +141,7 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
             let h = extended_trace[c][i].hash();
             acc = crate::merkle_tree::hash_two_inputs(acc, h);
         }
-        // Use the accumulated hash directly as the leaf hash (no field reduction, no extra hash)
+        // Use the accumulated hash directly as the leaf hash
         row_leaf_hashes.push(acc);
     }
 
@@ -152,13 +152,10 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     let commitment = tree.root().unwrap();
     println!("   ✅ Extended trace committed: {}", commitment);
 
-    // Create evaluation domain for the original trace
-    let eval_domain = EvaluationDomain::new_linear(field, trace.num_rows());
+    // Create a composition polynomial over original domain from the original trace
+    let (composition_poly, eval_domain) = create_fibonacci_constraint_poly(&trace, field);
 
-    // Create genuine composition polynomial over original domain from the original trace
-    let (composition_poly, _orig_domain_unused) = create_fibonacci_constraint_poly(&trace, field);
-
-    // FRI: fold evaluations (not hashes). Pad evaluations to Merkle leaf_count
+    // FRI: fold evaluations. Pad evaluations to Merkle leaf_count
     let mut fri_layers: Vec<Vec<FiniteFieldElement>> = Vec::new();
     let leaf_count = tree.leaf_count();
     let mut eval_leaves: Vec<FiniteFieldElement> = Vec::new();
