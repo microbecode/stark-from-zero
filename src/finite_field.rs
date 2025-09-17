@@ -101,6 +101,10 @@ impl FiniteFieldElement {
         FiniteFieldElement::new_fielded(negated_value, self.field)
     }
 
+    pub fn is_zero(&self) -> bool {
+        self.value == 0
+    }
+
     pub fn hash(&self) -> i128 {
         hashing::hash(self.value)
     }
@@ -219,6 +223,23 @@ mod tests {
         // Test that equivalent values in same field are equal
         assert_eq!(create(3, f), create(8, f)); // 3 ≡ 8 (mod 5)
         assert_eq!(create(1, f), create(6, f)); // 1 ≡ 6 (mod 5)
+    }
+
+    #[test]
+    fn is_zero() {
+        let f: FiniteField = FiniteField::new(5);
+
+        // Test zero elements
+        assert!(create(0, f).is_zero());
+        assert!(create(5, f).is_zero()); // 5 ≡ 0 (mod 5)
+        assert!(create(10, f).is_zero()); // 10 ≡ 0 (mod 5)
+
+        // Test non-zero elements
+        assert!(!create(1, f).is_zero());
+        assert!(!create(2, f).is_zero());
+        assert!(!create(3, f).is_zero());
+        assert!(!create(4, f).is_zero());
+        assert!(!create(6, f).is_zero()); // 6 ≡ 1 (mod 5)
     }
 
     /// A silly function to shorten the test lines

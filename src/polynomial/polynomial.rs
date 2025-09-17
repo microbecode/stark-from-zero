@@ -25,7 +25,7 @@ impl Polynomial {
     /// Returns the degree of the polynomial (highest non-zero coefficient in the field)
     pub fn degree(&self) -> usize {
         for i in (0..self.coefficients.len()).rev() {
-            if self.coefficients[i].value != 0 {
+            if !self.coefficients[i].is_zero() {
                 return i;
             }
         }
@@ -53,7 +53,7 @@ impl Polynomial {
         let end_index = self
             .coefficients
             .iter()
-            .rposition(|c| c.value != 0)
+            .rposition(|c| !c.is_zero())
             .map_or(0, |i| i + 1);
 
         // Create a new polynomial with trimmed coefficients
@@ -72,7 +72,7 @@ impl fmt::Display for Polynomial {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut terms = Vec::new();
         for (i, coeff) in self.coefficients.iter().enumerate() {
-            if coeff.value != 0 {
+            if !coeff.is_zero() {
                 let degree = i;
                 let term_str = match degree {
                     0 => format!("{}", coeff.value),

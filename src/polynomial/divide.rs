@@ -12,7 +12,7 @@ impl Polynomial {
 
     pub fn div(&self, divisor: &Polynomial) -> (Polynomial, Polynomial) {
         // Ensure that the divisor is not zero
-        if divisor.coefficients.iter().all(|c| c.value == 0) {
+        if divisor.coefficients.iter().all(|c| c.is_zero()) {
             panic!("Division by zero");
         }
 
@@ -35,7 +35,7 @@ impl Polynomial {
         // Perform polynomial long division
         for i in (0..quotient_coeffs.len()).rev() {
             let current_degree = divisor_degree + i;
-            if current_degree < dividend.len() && dividend[current_degree].value != 0 {
+            if current_degree < dividend.len() && !dividend[current_degree].is_zero() {
                 // quot = dividend_lead / divisor_lead
                 let quot = dividend[current_degree].multiply(lead_div_inv);
                 quotient_coeffs[i] = quot;
