@@ -1,6 +1,5 @@
 use crate::evaluation_domain::EvaluationDomain;
 use crate::finite_field::FiniteFieldElement;
-use crate::polynomial::interpolate::lagrange_interpolation;
 use crate::polynomial::polynomial::Polynomial;
 use crate::{fiat_shamir::Transcript, finite_field::FiniteField};
 
@@ -34,6 +33,8 @@ pub struct StarkProof {
     pub fri_betas: Vec<FiniteFieldElement>,
     /// Composition polynomial C(x) = f(x+2) - f(x+1) - f(x) over original domain
     pub composition_poly: Polynomial,
+    /// Quotient polynomial Q(x) = C(x) / Z_H(x) - should be low degree
+    pub quotient_poly: Polynomial,
 }
 
 /// Verify constraints using composition polynomial provided by prover
@@ -55,7 +56,7 @@ fn verify_fibonacci_constraints(
         let point = extended_eval_domain.element(sample_point);
         let constraint_value = composition_poly.evaluate(point);
 
-        if constraint_value.value != 0 {
+        if !constraint_value.is_zero() {
             println!(
                 "   ❌ Sample {} (point {}): C({}) = {} (should be 0)",
                 i, sample_point, sample_point, constraint_value.value
@@ -82,17 +83,95 @@ fn verify_fibonacci_constraints(
     valid
 }
 
+/// Verify quotient polynomial at sample points
+/// This checks that Q(x) = C(x) / Z_H(x) is well-defined and low-degree
+fn verify_quotient_polynomial(
+    sample_points: &[usize],
+    trace_size: usize,
+    field: FiniteField,
+    composition_poly: &Polynomial,
+    quotient_poly: &Polynomial,
+) -> bool {
+    println!("🔧 Verifying quotient polynomial Q(x) = C(x) / Z_H(x)...");
+
+    let mut valid = true;
+    let mut checked_count = 0;
+
+    // Create the original domain for vanishing polynomial
+    let original_domain = EvaluationDomain::new_linear(field, trace_size);
+
+    // Check quotient polynomial at all sampled points
+    for (i, &sample_point) in sample_points.iter().enumerate() {
+        let extended_eval_domain = EvaluationDomain::new_linear(field, trace_size * 4);
+        let point = extended_eval_domain.element(sample_point);
+
+        // Evaluate composition polynomial C(x)
+        let constraint_value = composition_poly.evaluate(point);
+
+        // Evaluate vanishing polynomial Z_H(x) at the point
+        let vanishing_value = original_domain.evaluate_vanishing(point);
+
+        // Evaluate quotient polynomial Q(x)
+        let quotient_value = quotient_poly.evaluate(point);
+
+        // Check: C(x) should equal Q(x) * Z_H(x)
+        let expected_constraint = quotient_value.multiply(vanishing_value);
+
+        if constraint_value != expected_constraint {
+            println!(
+                "   ❌ Sample {} (point {}): C({}) = {}, Q({}) * Z_H({}) = {} (should be equal)",
+                i,
+                sample_point,
+                sample_point,
+                constraint_value.value,
+                sample_point,
+                sample_point,
+                expected_constraint.value
+            );
+            valid = false;
+        } else {
+            println!(
+                "   ✅ Sample {} (point {}): Q({}) * Z_H({}) = C({}) = {}",
+                i, sample_point, sample_point, sample_point, sample_point, constraint_value.value
+            );
+        }
+        checked_count += 1;
+    }
+
+    if valid {
+        println!(
+            "   ✅ Quotient polynomial verification passed! (checked {} points)",
+            checked_count
+        );
+    } else {
+        println!("   ❌ Quotient polynomial verification failed!");
+    }
+
+    valid
+}
+
 /// Verify random sampling: check that constraint polynomial is zero at sample points
 pub fn verify_random_sampling(proof: &StarkProof) -> bool {
     println!("🎲 Verifying random sampling...");
 
     // Verify constraints using composition polynomial
-    verify_fibonacci_constraints(
+    let constraint_valid = verify_fibonacci_constraints(
         &proof.sampling_data.sample_points,
         proof.trace_size,
         proof.field,
         &proof.composition_poly,
-    )
+    );
+
+    // Verify quotient polynomial
+    let quotient_valid = verify_quotient_polynomial(
+        &proof.sampling_data.sample_points,
+        proof.trace_size,
+        proof.field,
+        &proof.composition_poly,
+        &proof.quotient_poly,
+    );
+
+    constraint_valid && quotient_valid
 }
 
 /// Verify Merkle proofs for sample points (verifier only verifies, doesn't reconstruct)

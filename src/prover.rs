@@ -117,6 +117,75 @@ fn create_fibonacci_constraint_poly(
     (constraint_poly, eval_domain)
 }
 
+/// Create the vanishing polynomial Z_H(x) = ∏(x - a_i) for domain H
+fn create_vanishing_polynomial(domain: &EvaluationDomain) -> Polynomial {
+    println!("🔧 Creating vanishing polynomial...");
+
+    let mut result = Polynomial::new(vec![1]); // Start with 1
+
+    for &point in &domain.points {
+        // Multiply by (x - point) = [negated_point, 1]
+        let negated_point = point.negate();
+        let linear_factor = Polynomial::new_ff(vec![
+            negated_point,
+            FiniteFieldElement::new_fielded(1, point.field),
+        ]);
+        result = result.multiply(&linear_factor);
+    }
+
+    println!(
+        "   ✅ Vanishing polynomial created (degree: {})",
+        result.degree()
+    );
+    result
+}
+
+/// Compute quotient polynomial Q(x) = C(x) / Z_H(x)
+/// This should be a low-degree polynomial if constraints are satisfied
+fn create_quotient_polynomial(
+    constraint_poly: &Polynomial,
+    vanishing_poly: &Polynomial,
+) -> Polynomial {
+    println!("🔧 Creating quotient polynomial Q(x) = C(x) / Z_H(x)...");
+
+    // If constraint polynomial is zero, quotient is zero
+    if constraint_poly.degree() == 0
+        && constraint_poly.coefficients.len() > 0
+        && constraint_poly.coefficients[0].is_zero()
+    {
+        println!("   ✅ Constraint polynomial is zero, quotient is zero");
+        return Polynomial::new(vec![0]);
+    }
+
+    // If constraint polynomial has lower degree than vanishing polynomial,
+    // the quotient is zero and remainder is the constraint polynomial
+    if constraint_poly.degree() < vanishing_poly.degree() {
+        println!("   ✅ Constraint polynomial has lower degree than vanishing polynomial, quotient is zero");
+        return Polynomial::new(vec![0]);
+    }
+
+    // Perform polynomial division: C(x) = Q(x) * Z_H(x) + R(x)
+    let (quotient, remainder) = constraint_poly.div(vanishing_poly);
+
+    // In a valid STARK, the remainder should be zero (or very small)
+    if remainder.degree() > 0
+        || (remainder.coefficients.len() > 0 && !remainder.coefficients[0].is_zero())
+    {
+        println!(
+            "   ⚠️  Non-zero remainder in quotient computation: {}",
+            remainder
+        );
+    } else {
+        println!("   ✅ Quotient polynomial created with zero remainder");
+    }
+
+    println!(
+        "   ✅ Quotient polynomial created (degree: {})",
+        quotient.degree()
+    );
+    quotient
+}
+
 /// Step 2: Prover with Low Degree Extension
 pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     println!("🔍 Starting STARK proof generation...");
@@ -154,6 +223,10 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
 
     // Create a composition polynomial over original domain from the original trace
     let (composition_poly, eval_domain) = create_fibonacci_constraint_poly(&trace, field);
+
+    // Create vanishing polynomial and quotient polynomial
+    let vanishing_poly = create_vanishing_polynomial(&eval_domain);
+    let quotient_poly = create_quotient_polynomial(&composition_poly, &vanishing_poly);
 
     // FRI: fold evaluations. Pad evaluations to Merkle leaf_count
     let mut fri_layers: Vec<Vec<FiniteFieldElement>> = Vec::new();
@@ -197,6 +270,7 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
         fri_layers,
         fri_betas,
         composition_poly,
+        quotient_poly,
     }
 }
 
@@ -291,5 +365,72 @@ mod tests {
         let is_valid = verify_proof(&proof);
 
         assert!(is_valid, "Fibonacci proof should be valid");
+    }
+
+    #[test]
+    fn test_vanishing_polynomial() {
+        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let domain = EvaluationDomain::new_linear(field, 3); // points: 0, 1, 2
+
+        let vanishing_poly = create_vanishing_polynomial(&domain);
+
+        // Vanishing polynomial should be zero at all domain points
+        for i in 0..domain.size() {
+            let point = domain.element(i);
+            let value = vanishing_poly.evaluate(point);
+            assert_eq!(
+                value.value, 0,
+                "Vanishing polynomial should be zero at domain point {}",
+                i
+            );
+        }
+
+        // Vanishing polynomial should be non-zero outside the domain
+        let outside_point = FiniteFieldElement::new_fielded(3, field);
+        let outside_value = vanishing_poly.evaluate(outside_point);
+        assert_ne!(
+            outside_value.value, 0,
+            "Vanishing polynomial should be non-zero outside domain"
+        );
+    }
+
+    #[test]
+    fn test_quotient_polynomial() {
+        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let domain = EvaluationDomain::new_linear(field, 3); // points: 0, 1, 2
+
+        // Create a simple constraint polynomial that's zero at domain points
+        // C(x) = x(x-1)(x-2) = x^3 - 3x^2 + 2x
+        let constraint_poly = Polynomial::new(vec![0, 2, -3, 1]);
+
+        let vanishing_poly = create_vanishing_polynomial(&domain);
+        let quotient_poly = create_quotient_polynomial(&constraint_poly, &vanishing_poly);
+
+        // The quotient should be a constant (degree 0) since C(x) = (x-0)(x-1)(x-2) * 1
+        assert_eq!(
+            quotient_poly.degree(),
+            0,
+            "Quotient polynomial should be constant"
+        );
+        assert_eq!(
+            quotient_poly.coefficients[0].value, 1,
+            "Quotient should be 1"
+        );
+
+        // Verify: C(x) = Q(x) * Z_H(x) at a few test points
+        let test_points = vec![0, 1, 2, 3, 4];
+        for &i in &test_points {
+            let point = FiniteFieldElement::new_fielded(i, field);
+            let c_value = constraint_poly.evaluate(point);
+            let z_value = vanishing_poly.evaluate(point);
+            let q_value = quotient_poly.evaluate(point);
+            let expected = q_value.multiply(z_value);
+
+            assert_eq!(
+                c_value.value, expected.value,
+                "C({}) = {} should equal Q({}) * Z_H({}) = {}",
+                i, c_value.value, i, i, expected.value
+            );
+        }
     }
 }
