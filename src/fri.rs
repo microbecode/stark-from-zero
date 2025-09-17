@@ -1,4 +1,4 @@
-use crate::finite_field::{FiniteField, FiniteFieldElement};
+use crate::finite_field::FiniteFieldElement;
 
 /// Minimal FRI-style folding over evaluations on a coset of size 2^k.
 ///
@@ -53,7 +53,7 @@ pub fn fold_until(
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::DEFAULT_FIELD_SIZE;
+    use crate::{constants::DEFAULT_FIELD_SIZE, finite_field::FiniteField};
 
     use super::*;
 

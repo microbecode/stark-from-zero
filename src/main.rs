@@ -1,7 +1,6 @@
 use stark_from_zero::{
     constants::{DEFAULT_FIELD_SIZE, EXTENSION_FACTOR},
-    evaluation_domain::EvaluationDomain,
-    finite_field::{FiniteField, FiniteFieldElement},
+    finite_field::FiniteField,
     prover::{extend_trace, generate_merkle_proofs, prove_fibonacci},
     trace::fibonacci,
     verifier::{derive_sample_points_from_commitment, verify_proof},
