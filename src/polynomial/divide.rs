@@ -60,6 +60,8 @@ impl Polynomial {
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::DEFAULT_FIELD_SIZE;
+
     use super::*;
 
     #[test]
@@ -79,7 +81,7 @@ mod tests {
 
         // Also check explicit values against inverse(3)
         let inv3 = FiniteFieldElement::new(3).inverse().value;
-        let p = FiniteFieldElement::DEFAULT_FIELD_SIZE;
+        let p = DEFAULT_FIELD_SIZE;
         assert_eq!(divided.coefficients[0].value, (4 * inv3) % p);
         assert_eq!(divided.coefficients[1].value, 0);
         assert_eq!(divided.coefficients[2].value, (3 * inv3) % p);
@@ -157,10 +159,7 @@ mod tests {
         assert_eq!(q.coefficients[2].value, 1);
 
         assert_eq!(r.coefficients.len(), 1);
-        assert_eq!(
-            r.coefficients[0].value,
-            5 % FiniteFieldElement::DEFAULT_FIELD_SIZE
-        );
+        assert_eq!(r.coefficients[0].value, 5 % DEFAULT_FIELD_SIZE);
     }
 
     #[test]
@@ -182,7 +181,7 @@ mod tests {
         assert_eq!(q.coefficients[2].value, 3);
 
         assert_eq!(r.coefficients.len(), 2);
-        let p = FiniteFieldElement::DEFAULT_FIELD_SIZE;
+        let p = DEFAULT_FIELD_SIZE;
         assert_eq!(r.coefficients[0].value, (p - 3) % p);
         assert_eq!(r.coefficients[1].value, 4);
     }

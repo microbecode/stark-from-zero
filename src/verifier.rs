@@ -1,3 +1,4 @@
+use crate::constants::{DEFAULT_FIELD_SIZE, EXTENSION_FACTOR};
 use crate::evaluation_domain::EvaluationDomain;
 use crate::finite_field::FiniteFieldElement;
 use crate::polynomial::polynomial::Polynomial;
@@ -52,7 +53,8 @@ fn verify_fibonacci_constraints(
     // Check composition polynomial at all sampled points
     for (i, &sample_point) in sample_points.iter().enumerate() {
         // Evaluate composition polynomial at this point
-        let extended_eval_domain = EvaluationDomain::new_linear(field, trace_size * 4);
+        let extended_eval_domain =
+            EvaluationDomain::new_linear(field, trace_size * EXTENSION_FACTOR);
         let point = extended_eval_domain.element(sample_point);
         let constraint_value = composition_poly.evaluate(point);
 
@@ -102,7 +104,8 @@ fn verify_quotient_polynomial(
 
     // Check quotient polynomial at all sampled points
     for (i, &sample_point) in sample_points.iter().enumerate() {
-        let extended_eval_domain = EvaluationDomain::new_linear(field, trace_size * 4);
+        let extended_eval_domain =
+            EvaluationDomain::new_linear(field, trace_size * EXTENSION_FACTOR);
         let point = extended_eval_domain.element(sample_point);
 
         // Evaluate composition polynomial C(x)
@@ -278,7 +281,7 @@ pub fn derive_sample_points_from_commitment(
     num_samples: usize,
 ) -> Vec<usize> {
     println!("🎲 Deriving sample points via Fiat–Shamir...");
-    let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+    let field = FiniteField::new(DEFAULT_FIELD_SIZE);
     let mut t = Transcript::new();
     t.absorb_i128(commitment);
     t.absorb_i128(leaf_count as i128);
@@ -299,7 +302,7 @@ pub fn derive_fri_betas_from_commitment(
     num_rounds: usize,
 ) -> Vec<FiniteFieldElement> {
     println!("🧪 Deriving FRI betas via Fiat–Shamir...");
-    let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+    let field = FiniteField::new(DEFAULT_FIELD_SIZE);
     let mut t = Transcript::new();
     t.absorb_i128(commitment);
 

@@ -25,6 +25,8 @@ impl Polynomial {
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::DEFAULT_FIELD_SIZE;
+
     use super::*;
 
     #[test]
@@ -43,7 +45,7 @@ mod tests {
         let res = empty_poly.sub(&non_empty_poly);
         assert_eq!(res.coefficients.len(), 1);
         // 0 - 5 mod p == p - 5
-        let p = FiniteFieldElement::DEFAULT_FIELD_SIZE;
+        let p = DEFAULT_FIELD_SIZE;
         assert_eq!(res.coefficients[0].value, (p - 5) % p);
     }
 
@@ -62,7 +64,7 @@ mod tests {
         assert_eq!(res.coefficients.len(), 3);
         assert_eq!(res.coefficients[0].value, 4);
         // 0 - 7 mod p == p - 7
-        let p = FiniteFieldElement::DEFAULT_FIELD_SIZE;
+        let p = DEFAULT_FIELD_SIZE;
         assert_eq!(res.coefficients[1].value, (p - 7) % p);
         assert_eq!(res.coefficients[2].value, 1);
     }

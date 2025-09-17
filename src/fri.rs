@@ -53,11 +53,13 @@ pub fn fold_until(
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::DEFAULT_FIELD_SIZE;
+
     use super::*;
 
     #[test]
     fn fold_once_halves_length_and_is_deterministic() {
-        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let field = FiniteField::new(DEFAULT_FIELD_SIZE);
         // Build 8 sample values: 0..7
         let values: Vec<FiniteFieldElement> = (0..8)
             .map(|i| FiniteFieldElement::new_fielded(i as i128, field))
@@ -77,7 +79,7 @@ mod tests {
 
     #[test]
     fn fold_until_reduces_to_target_len() {
-        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let field = FiniteField::new(DEFAULT_FIELD_SIZE);
         let values: Vec<FiniteFieldElement> = (0..16)
             .map(|i| FiniteFieldElement::new_fielded((i as i128) * 7 + 1, field))
             .collect();
@@ -103,7 +105,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn fold_once_panics_on_odd_length() {
-        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let field = FiniteField::new(DEFAULT_FIELD_SIZE);
         let values: Vec<FiniteFieldElement> = (0..5)
             .map(|i| FiniteFieldElement::new_fielded(i as i128, field))
             .collect();

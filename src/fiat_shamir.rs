@@ -53,11 +53,13 @@ impl Transcript {
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::DEFAULT_FIELD_SIZE;
+
     use super::*;
 
     #[test]
     fn determinism_same_inputs_same_challenges() {
-        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let field = FiniteField::new(DEFAULT_FIELD_SIZE);
         let mut t1 = Transcript::new();
         let mut t2 = Transcript::new();
 
@@ -79,7 +81,7 @@ mod tests {
 
     #[test]
     fn different_absorbs_change_challenge() {
-        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let field = FiniteField::new(DEFAULT_FIELD_SIZE);
         let mut t1 = Transcript::new();
         let mut t2 = Transcript::new();
 

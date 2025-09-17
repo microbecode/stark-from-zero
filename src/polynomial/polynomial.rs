@@ -93,6 +93,8 @@ impl fmt::Display for Polynomial {
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::DEFAULT_FIELD_SIZE;
+
     use super::*;
 
     #[test]
@@ -106,7 +108,7 @@ mod tests {
         assert_eq!(poly1.degree(), 2);
 
         // Ensure negative multiples of field are treated as zero
-        let p = FiniteFieldElement::DEFAULT_FIELD_SIZE;
+        let p = DEFAULT_FIELD_SIZE;
         let coeffs = [1_i128, -(p), 0, 0].to_vec();
         let poly1 = Polynomial::new(coeffs);
         assert_eq!(poly1.degree(), 0);
@@ -138,7 +140,7 @@ mod tests {
         assert_eq!(poly.to_i128_coeffs(), should_result);
 
         // Ensure that coefficients equal to 0 mod p are trimmed
-        let p = FiniteFieldElement::DEFAULT_FIELD_SIZE;
+        let p = DEFAULT_FIELD_SIZE;
         let coeffs = vec![0_i128, 2, -p, 0];
         let should_result = vec![0_i128, 2];
         let poly = Polynomial::new(coeffs);

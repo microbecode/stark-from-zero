@@ -1,4 +1,4 @@
-use crate::hashing;
+use crate::{constants::DEFAULT_FIELD_SIZE, hashing};
 
 #[derive(Debug, Clone, Copy)]
 pub struct FiniteField {
@@ -32,9 +32,8 @@ impl Eq for FiniteFieldElement {}
 
 /// TODO: consider what to do when i128 overflows
 impl FiniteFieldElement {
-    pub const DEFAULT_FIELD_SIZE: i128 = 3 * 2_i128.pow(30) + 1;
     const DEFAULT_FIELD: FiniteField = FiniteField {
-        prime: Self::DEFAULT_FIELD_SIZE,
+        prime: DEFAULT_FIELD_SIZE,
     };
 
     pub const ZERO: Self = FiniteFieldElement {

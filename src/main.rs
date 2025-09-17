@@ -1,4 +1,5 @@
 use stark_from_zero::{
+    constants::{DEFAULT_FIELD_SIZE, EXTENSION_FACTOR},
     evaluation_domain::EvaluationDomain,
     finite_field::{FiniteField, FiniteFieldElement},
     prover::{extend_trace, generate_merkle_proofs, prove_fibonacci},
@@ -27,19 +28,19 @@ fn main() {
     }
 
     // Generate STARK proof
-    let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+    let field = FiniteField::new(DEFAULT_FIELD_SIZE);
     let mut proof = prove_fibonacci(trace.clone(), field);
 
     // Verifier generates sample points via Fiat–Shamir
     println!("\n🔍 STARK Verification:");
-    let extended_trace_size = 32; // 8 * 4 extension factor
+    let extended_trace_size = 8 * EXTENSION_FACTOR; // matches Merkle leaves for this setup
     let leaf_count = extended_trace_size; // matches Merkle leaves for this setup
     let sample_points = derive_sample_points_from_commitment(proof.trace_commitment, leaf_count, 5);
 
     // Prover generates Merkle proofs for the sample points
     // Note: In a real STARK, the prover would have already computed this during proof generation
     // For this educational example, we recompute it
-    let extended_trace = extend_trace(&trace, proof.field, 4);
+    let extended_trace = extend_trace(&trace, proof.field, EXTENSION_FACTOR);
     let merkle_proofs = generate_merkle_proofs(&extended_trace, &sample_points);
 
     // Prover provides sample values and Merkle proofs

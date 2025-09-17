@@ -1,3 +1,4 @@
+use crate::constants::EXTENSION_FACTOR;
 use crate::evaluation_domain::EvaluationDomain;
 use crate::finite_field::{FiniteField, FiniteFieldElement};
 use crate::fri::fold_once;
@@ -196,7 +197,7 @@ pub fn prove_fibonacci(trace: Trace, field: FiniteField) -> StarkProof {
     );
 
     // Step 1: Perform Low Degree Extension
-    let extension_factor = 4; // Extend 8 steps to 32 steps
+    let extension_factor = EXTENSION_FACTOR; // Extend trace by constant factor
     let extended_trace = extend_trace(&trace, field, extension_factor);
 
     // Step 2: Commit to the EXTENDED trace (row-leaf hashing)
@@ -325,6 +326,7 @@ pub fn generate_merkle_proofs(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::DEFAULT_FIELD_SIZE;
     use crate::trace::fibonacci;
     use crate::verifier::verify_proof;
 
@@ -332,13 +334,13 @@ mod tests {
     fn test_fibonacci_prover() {
         // Generate a small Fibonacci trace
         let trace = fibonacci::generate_fibonacci_trace(5, 1, 1);
-        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let field = FiniteField::new(DEFAULT_FIELD_SIZE);
 
         // Generate proof
         let mut proof = prove_fibonacci(trace.clone(), field);
 
         // Set up sampling data like in main
-        let extension_factor = 4usize;
+        let extension_factor = EXTENSION_FACTOR;
         let extended_trace = super::extend_trace(&trace, proof.field, extension_factor);
         let extended_trace_size = proof.trace_size * extension_factor;
 
@@ -369,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_vanishing_polynomial() {
-        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let field = FiniteField::new(DEFAULT_FIELD_SIZE);
         let domain = EvaluationDomain::new_linear(field, 3); // points: 0, 1, 2
 
         let vanishing_poly = create_vanishing_polynomial(&domain);
@@ -396,7 +398,7 @@ mod tests {
 
     #[test]
     fn test_quotient_polynomial() {
-        let field = FiniteField::new(FiniteFieldElement::DEFAULT_FIELD_SIZE);
+        let field = FiniteField::new(DEFAULT_FIELD_SIZE);
         let domain = EvaluationDomain::new_linear(field, 3); // points: 0, 1, 2
 
         // Create a simple constraint polynomial that's zero at domain points
