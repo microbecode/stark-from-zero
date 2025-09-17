@@ -86,6 +86,12 @@ impl FiniteFieldElement {
         self.pow(self.field.prime - 2)
     }
 
+    pub fn negate(&self) -> Self {
+        // Negation in finite field: -a = p - a (mod p)
+        let negated_value = (self.field.prime - self.value) % self.field.prime;
+        FiniteFieldElement::new_fielded(negated_value, self.field)
+    }
+
     pub fn hash(&self) -> i128 {
         hashing::hash(self.value)
     }
@@ -163,6 +169,26 @@ mod tests {
         assert_ne!(create(0, f).hash(), create(4, f).hash());
 
         assert_eq!(create(1, f).hash(), create(6, f).hash());
+    }
+
+    #[test]
+    fn negate() {
+        let f: FiniteField = FiniteField::new(5);
+
+        // Test negation: -a = p - a (mod p)
+        assert_eq!(create(0, f).negate().value, 0); // -0 = 0
+        assert_eq!(create(1, f).negate().value, 4); // -1 = 5-1 = 4
+        assert_eq!(create(2, f).negate().value, 3); // -2 = 5-2 = 3
+        assert_eq!(create(3, f).negate().value, 2); // -3 = 5-3 = 2
+        assert_eq!(create(4, f).negate().value, 1); // -4 = 5-4 = 1
+
+        // Test that a + (-a) = 0
+        for i in 0..5 {
+            let elem = create(i, f);
+            let neg_elem = elem.negate();
+            let sum = elem.add(neg_elem);
+            assert_eq!(sum.value, 0, "{} + (-{}) should equal 0", i, i);
+        }
     }
 
     /// A silly function to shorten the test lines
