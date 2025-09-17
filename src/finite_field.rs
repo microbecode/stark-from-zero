@@ -21,6 +21,15 @@ pub struct FiniteFieldElement {
     pub field: FiniteField,
 }
 
+impl PartialEq for FiniteFieldElement {
+    fn eq(&self, other: &Self) -> bool {
+        // Two field elements are equal if they're in the same field and have the same canonical value
+        self.field.prime == other.field.prime && self.value == other.value
+    }
+}
+
+impl Eq for FiniteFieldElement {}
+
 /// TODO: consider what to do when i128 overflows
 impl FiniteFieldElement {
     pub const DEFAULT_FIELD_SIZE: i128 = 3 * 2_i128.pow(30) + 1;
@@ -189,6 +198,27 @@ mod tests {
             let sum = elem.add(neg_elem);
             assert_eq!(sum.value, 0, "{} + (-{}) should equal 0", i, i);
         }
+    }
+
+    #[test]
+    fn equality() {
+        let f: FiniteField = FiniteField::new(5);
+        let g: FiniteField = FiniteField::new(7);
+
+        // Same field, same value
+        assert_eq!(create(3, f), create(3, f));
+        assert_eq!(create(0, f), create(0, f));
+
+        // Same field, different values
+        assert_ne!(create(3, f), create(4, f));
+        assert_ne!(create(0, f), create(1, f));
+
+        // Different fields, same value
+        assert_ne!(create(3, f), create(3, g));
+
+        // Test that equivalent values in same field are equal
+        assert_eq!(create(3, f), create(8, f)); // 3 ≡ 8 (mod 5)
+        assert_eq!(create(1, f), create(6, f)); // 1 ≡ 6 (mod 5)
     }
 
     /// A silly function to shorten the test lines
